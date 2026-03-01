@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { View, StyleSheet, SafeAreaView, Text, TouchableOpacity, ScrollView, TextInput, Switch, Platform, Animated } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, StyleSheet, SafeAreaView, Text, TouchableOpacity, ScrollView, TextInput, Switch, Platform, Animated, ActivityIndicator, Alert } from 'react-native';
 import { ChevronLeft, ChevronRight, Home, Briefcase, TreePine, Dumbbell, Coffee, MapPin, Check } from 'lucide-react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Haptics from 'expo-haptics';
 import { COLORS } from '../../config/colors';
 import { FONTS } from '../../config/fonts';
+import { createHabit, updateHabit, getHabitById } from '../../src/api/habitService';
 
 export default function AddHabitScreen({ route, navigation }) {
   // Get habit data from route params if editing
@@ -12,11 +13,15 @@ export default function AddHabitScreen({ route, navigation }) {
   const isEditing = route?.params?.isEditing || false;
 
   const [currentStep, setCurrentStep] = useState(1);
-  const totalSteps = 3;
 
   // Step 1 states
   const [selectedHabit, setSelectedHabit] = useState(null);
-  const [habitInput, setHabitInput] = useState(editingHabit?.title || '');
+  const PREFIX = 'I want to ';
+  const [habitInput, setHabitInput] = useState(
+    editingHabit?.title 
+      ? (editingHabit.title.startsWith(PREFIX) ? editingHabit.title : `${PREFIX}${editingHabit.title}`)
+      : PREFIX
+  );
 
   // Step 2 states
   const [frequency, setFrequency] = useState(editingHabit?.frequency || 'daily');
@@ -31,10 +36,14 @@ export default function AddHabitScreen({ route, navigation }) {
   // Step 3 states
   const [selectedEnvironment, setSelectedEnvironment] = useState(editingHabit?.environment || 'home');
 
+  // Loading and error states
+  const [isSaving, setIsSaving] = useState(false);
+  const [, setSaveError] = useState(null);
+
   // Animation values for step transitions
-  const step1Anim = useRef(new Animated.Value(0)).current;
-  const step2Anim = useRef(new Animated.Value(0)).current;
-  const step3Anim = useRef(new Animated.Value(0)).current;
+  const [step1Anim] = useState(() => new Animated.Value(0));
+  const [step2Anim] = useState(() => new Animated.Value(0));
+  const [step3Anim] = useState(() => new Animated.Value(0));
 
   const quickSuggestions = ['Drink water', 'Read', 'Meditation', 'Walk outside'];
 
@@ -61,40 +70,66 @@ export default function AddHabitScreen({ route, navigation }) {
   useEffect(() => {
     step2Anim.setValue(400); // Start step 2 off-screen
     step3Anim.setValue(400); // Start step 3 off-screen
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- init once on mount
   }, []);
 
   // Initialize form with habit data when editing
   useEffect(() => {
-    if (editingHabit && isEditing) {
-      // Map habit fields to form fields
-      if (editingHabit.title) {
-        setHabitInput(editingHabit.title);
-      } else if (editingHabit.habitName) {
-        setHabitInput(editingHabit.habitName);
+    const loadHabitData = async () => {
+      if (isEditing && editingHabit) {
+        let habitToUse = editingHabit;
+        
+        // If only ID is provided, fetch the full habit data
+        if (editingHabit.id && !editingHabit.title && !editingHabit.habitName) {
+          const { data, error } = await getHabitById(editingHabit.id);
+          if (error) {
+            console.error('Error loading habit:', error);
+            Alert.alert('Error', 'Failed to load habit data');
+            return;
+          }
+          if (data) {
+            habitToUse = data;
+          }
+        }
+        
+        // Map habit fields to form fields
+        if (habitToUse.title) {
+          const title = habitToUse.title.startsWith(PREFIX) 
+            ? habitToUse.title 
+            : `${PREFIX}${habitToUse.title}`;
+          setHabitInput(title);
+        } else if (habitToUse.habitName) {
+          const habitName = habitToUse.habitName.startsWith(PREFIX)
+            ? habitToUse.habitName
+            : `${PREFIX}${habitToUse.habitName}`;
+          setHabitInput(habitName);
+        }
+        
+        if (habitToUse.frequency) {
+          setFrequency(habitToUse.frequency);
+        }
+        
+        if (habitToUse.environment) {
+          setSelectedEnvironment(habitToUse.environment);
+        }
+        
+        if (habitToUse.selectedDays) {
+          setSelectedDays(habitToUse.selectedDays);
+        }
+        
+        if (habitToUse.reminders !== undefined) {
+          setRemindersEnabled(habitToUse.reminders);
+        } else if (habitToUse.remindersEnabled !== undefined) {
+          setRemindersEnabled(habitToUse.remindersEnabled);
+        }
+        
+        if (habitToUse.reminderTime) {
+          setSelectedTime(new Date(habitToUse.reminderTime));
+        }
       }
-      
-      if (editingHabit.frequency) {
-        setFrequency(editingHabit.frequency);
-      }
-      
-      if (editingHabit.environment) {
-        setSelectedEnvironment(editingHabit.environment);
-      }
-      
-      if (editingHabit.selectedDays) {
-        setSelectedDays(editingHabit.selectedDays);
-      }
-      
-      if (editingHabit.reminders !== undefined) {
-        setRemindersEnabled(editingHabit.reminders);
-      } else if (editingHabit.remindersEnabled !== undefined) {
-        setRemindersEnabled(editingHabit.remindersEnabled);
-      }
-      
-      if (editingHabit.reminderTime) {
-        setSelectedTime(new Date(editingHabit.reminderTime));
-      }
-    }
+    };
+    
+    loadHabitData();
   }, [editingHabit, isEditing]);
 
   // Animate step transitions
@@ -154,15 +189,33 @@ export default function AddHabitScreen({ route, navigation }) {
         }),
       ]).start();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- only react to currentStep; anim refs stable
   }, [currentStep]);
 
   const handleHabitSelect = (habit) => {
     setSelectedHabit(habit);
-    setHabitInput(`I want to ${habit.toLowerCase()}`);
+    setHabitInput(`${PREFIX}${habit.toLowerCase()}`);
+  };
+
+  const handleInputChange = (text) => {
+    // Ensure the prefix is always present
+    if (!text.startsWith(PREFIX)) {
+      // If user tries to delete the prefix, keep it
+      if (text.length < PREFIX.length) {
+        setHabitInput(PREFIX);
+      } else {
+        // If text doesn't start with prefix, add it
+        setHabitInput(PREFIX + text.replace(PREFIX, ''));
+      }
+    } else {
+      setHabitInput(text);
+    }
   };
 
   const handleNextStep1 = () => {
-    if (habitInput.trim()) {
+    // Check if there's content after the prefix
+    const habitText = habitInput.replace(PREFIX, '').trim();
+    if (habitText) {
       setCurrentStep(2);
     }
   };
@@ -171,20 +224,69 @@ export default function AddHabitScreen({ route, navigation }) {
     setCurrentStep(3);
   };
 
-  const handleNextStep3 = () => {
-    // Trigger haptics feedback for successful completion
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  const handleNextStep3 = async () => {
+    if (isSaving) return; // Prevent multiple submissions
     
-    // Navigate to HabitCreatedScreen with habit data
-    const habitData = {
-      habitName: habitInput.trim(),
-      frequency,
-      reminders: remindersEnabled,
-      reminderTime: selectedTime,
-      selectedDays: frequency === 'weekly' ? selectedDays : null,
-      environment: selectedEnvironment,
-    };
-    navigation.navigate('HabitCreated', { habitData });
+    setIsSaving(true);
+    setSaveError(null);
+    
+    try {
+      // Trigger haptics feedback for successful completion
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      
+      // Prepare habit data
+      const habitData = {
+        habitName: habitInput.replace(PREFIX, '').trim(), // Remove prefix when saving
+        frequency,
+        remindersEnabled: remindersEnabled,
+        reminderTime: selectedTime,
+        selectedDays: frequency === 'weekly' ? selectedDays : [],
+        environment: selectedEnvironment,
+      };
+
+      let savedHabit;
+      
+      if (isEditing && editingHabit?.id) {
+        // Update existing habit
+        const { data, error } = await updateHabit(editingHabit.id, habitData);
+        
+        if (error) {
+          throw error;
+        }
+        
+        savedHabit = data;
+      } else {
+        // Create new habit
+        const { data, error } = await createHabit(habitData);
+        
+        if (error) {
+          throw error;
+        }
+        
+        savedHabit = data;
+      }
+
+      setIsSaving(false);
+      
+      // Navigate to HabitCreatedScreen with saved habit data
+      navigation.navigate('HabitCreated', { 
+        habitData: {
+          ...habitData,
+          id: savedHabit?.id,
+        },
+        savedHabit: savedHabit,
+      });
+    } catch (error) {
+      console.error('Error saving habit:', error);
+      setIsSaving(false);
+      setSaveError(error.message || 'Failed to save habit. Please try again.');
+      
+      Alert.alert(
+        'Error',
+        error.message || 'Failed to save habit. Please try again.',
+        [{ text: 'OK' }]
+      );
+    }
   };
 
   const handleBack = () => {
@@ -269,7 +371,7 @@ export default function AddHabitScreen({ route, navigation }) {
               placeholder="I want to..."
               placeholderTextColor="#999"
               value={habitInput}
-              onChangeText={setHabitInput}
+              onChangeText={handleInputChange}
               autoFocus={false}
             />
             <Text style={styles.suggestionsLabel}>QUICK SUGGESTIONS</Text>
@@ -491,7 +593,8 @@ export default function AddHabitScreen({ route, navigation }) {
         <TouchableOpacity
           style={[
             styles.nextButton,
-            (currentStep === 1 ? (habitInput.trim() && styles.nextButtonActive) : styles.nextButtonActive)
+            (currentStep === 1 ? (habitInput.replace(PREFIX, '').trim() && styles.nextButtonActive) : styles.nextButtonActive),
+            isSaving && styles.nextButtonDisabled
           ]}
           onPress={
             currentStep === 1 ? handleNextStep1 : 
@@ -499,19 +602,25 @@ export default function AddHabitScreen({ route, navigation }) {
             handleNextStep3
           }
           activeOpacity={0.7}
-          disabled={currentStep === 1 && !habitInput.trim()}
+          disabled={(currentStep === 1 && !habitInput.replace(PREFIX, '').trim()) || isSaving}
         >
-          <Text style={[
-            styles.nextButtonText,
-            (currentStep !== 1 || habitInput.trim()) && styles.nextButtonTextActive
-          ]}>
-            Next
-          </Text>
-          <ChevronRight 
-            size={20} 
-            color={(currentStep !== 1 || habitInput.trim()) ? COLORS.primary : '#999'} 
-            strokeWidth={2}
-          />
+          {isSaving && currentStep === 3 ? (
+            <ActivityIndicator size="small" color={COLORS.white} />
+          ) : (
+            <>
+              <Text style={[
+                styles.nextButtonText,
+                (currentStep !== 1 || habitInput.replace(PREFIX, '').trim()) && styles.nextButtonTextActive
+              ]}>
+                {currentStep === 3 ? (isEditing ? 'Save' : 'Next') : 'Next'}
+              </Text>
+              <ChevronRight 
+                size={20} 
+                color={(currentStep !== 1 || habitInput.replace(PREFIX, '').trim()) ? COLORS.primary : '#999'} 
+                strokeWidth={2}
+              />
+            </>
+          )}
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -854,6 +963,9 @@ const styles = StyleSheet.create({
   },
   nextButtonActive: {
     backgroundColor: COLORS.primary,
+  },
+  nextButtonDisabled: {
+    opacity: 0.6,
   },
   nextButtonText: {
     fontSize: 16,

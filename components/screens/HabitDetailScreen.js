@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Alert, Image, ActivityIndicator } from 'react-native';
-import { ArrowLeft, Pen, MoreVertical, Flame, Camera, Image as ImageIcon } from 'lucide-react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { ArrowLeft, Pen, MoreVertical, Flame, Camera, Image as ImageIcon, Trash2 } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { COLORS } from '../../config/colors';
 import { FONTS } from '../../config/fonts';
-// import { analyzeImageWithGemini } from '../../services/geminiService'; // Commented out for testing
+import { deleteHabit, getHabitById } from '../../src/api/habitService';
+import { getCompletion } from '../../src/api/completionService';
 
 // Function to get emoji icon based on habit title
 const getHabitEmoji = (title) => {
@@ -32,19 +33,159 @@ const getHabitEmoji = (title) => {
 };
 
 export default function HabitDetailScreen({ route, navigation }) {
-  // Get habit data from route params or use defaults
-  const habit = route?.params?.habit || {
+  // Get habit data from route params
+  const routeHabit = route?.params?.habit;
+  
+  const [habit, setHabit] = useState(routeHabit || {
     title: 'drink water',
     target: 'target: 2l today',
-    streak: 3,
+    streak: 0,
     icon: 'water',
-  };
+  });
+  const [loading, setLoading] = useState(!!routeHabit?.id);
+  const [, setIsCompletedToday] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+
+  // Fetch habit data from Supabase if ID is provided
+  useEffect(() => {
+    const loadHabitData = async () => {
+      if (routeHabit?.id) {
+        setLoading(true);
+        try {
+          // Fetch habit details
+          const { data: habitData, error: habitError } = await getHabitById(routeHabit.id);
+          
+          if (habitError) {
+            throw habitError;
+          }
+          
+          if (habitData) {
+            setHabit({
+              id: habitData.id,
+              title: habitData.title || habitData.habitName || 'Untitled Habit',
+              target: habitData.target || `target: ${habitData.frequency || 'daily'}`,
+              streak: habitData.streak || 0,
+              icon: habitData.icon,
+              frequency: habitData.frequency,
+              environment: habitData.environment,
+              remindersEnabled: habitData.remindersEnabled,
+              reminderTime: habitData.reminderTime,
+              selectedDays: habitData.selectedDays,
+            });
+            
+            // Check if habit is completed for today
+            const { data: completion } = await getCompletion(habitData.id, new Date());
+            setIsCompletedToday(!!completion);
+          }
+        } catch (error) {
+          console.error('Error loading habit:', error);
+          Alert.alert('Error', 'Failed to load habit data');
+        } finally {
+          setLoading(false);
+        }
+      } else {
+        // If no ID, check completion status for route habit
+        if (routeHabit?.id) {
+          const { data: completion } = await getCompletion(routeHabit.id, new Date());
+          setIsCompletedToday(!!completion);
+        }
+      }
+    };
+    
+    loadHabitData();
+  }, [routeHabit?.id]);
 
   const habitEmoji = getHabitEmoji(habit.title);
-  const [selectedImage, setSelectedImage] = useState(null);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [imageAnalysisResult, setImageAnalysisResult] = useState(null); // null, 'success', or 'fail'
-  const [analysisResponse, setAnalysisResponse] = useState(null); // Store the full response
+
+  const handleDelete = () => {
+    if (!habit.id) {
+      Alert.alert('Error', 'Cannot delete habit: missing habit ID');
+      return;
+    }
+
+    Alert.alert(
+      'Delete Habit',
+      `Are you sure you want to delete "${habit.title || habit.habitName}"? This action cannot be undone.`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+          onPress: () => setShowMenu(false),
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const { error } = await deleteHabit(habit.id);
+              
+              if (error) {
+                throw error;
+              }
+              
+              // Navigate back and refresh
+              navigation.goBack();
+            } catch (error) {
+              console.error('Error deleting habit:', error);
+              Alert.alert(
+                'Error',
+                error.message || 'Failed to delete habit. Please try again.'
+              );
+            } finally {
+              setShowMenu(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleEdit = () => {
+    setShowMenu(false);
+    navigation.navigate('AddHabit', { 
+      habit: {
+        id: habit.id,
+        title: habit.title || habit.habitName,
+        habitName: habit.title || habit.habitName,
+        frequency: habit.frequency || 'daily',
+        remindersEnabled: habit.remindersEnabled !== undefined ? habit.remindersEnabled : true,
+        reminderTime: habit.reminderTime || new Date(),
+        selectedDays: habit.selectedDays || [],
+        environment: habit.environment || 'anywhere',
+        target: habit.target,
+        streak: habit.streak,
+      },
+      isEditing: true 
+    });
+  };
+
+  const handleSkipToday = async () => {
+    if (!habit.id) {
+      Alert.alert('Error', 'Cannot skip: missing habit ID');
+      return;
+    }
+
+    Alert.alert(
+      'Skip for Today',
+      `Skip "${habit.title}" for today? This will break your streak.`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Skip',
+          style: 'destructive',
+          onPress: async () => {
+            // Do NOT create a completion record
+            // Just navigate back - the streak will break automatically
+            // when the database trigger checks for consecutive days
+            navigation.goBack();
+          },
+        },
+      ]
+    );
+  };
 
   // Request permissions and open camera
   const handleOpenCamera = async () => {
@@ -71,11 +212,11 @@ export default function HabitDetailScreen({ route, navigation }) {
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const imageUri = result.assets[0].uri;
-        setSelectedImage(imageUri);
-        setImageAnalysisResult(null);
-        setAnalysisResponse(null);
-        // Process image with Gemini API
-        await processImageWithGemini(imageUri);
+        // Navigate to AIProcessScreen to perform analysis
+        navigation.navigate('AIProcess', {
+          imageUri: imageUri,
+          habit: habit,
+        });
       }
     } catch (error) {
       console.error('Error opening camera:', error);
@@ -108,11 +249,11 @@ export default function HabitDetailScreen({ route, navigation }) {
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const imageUri = result.assets[0].uri;
-        setSelectedImage(imageUri);
-        setImageAnalysisResult(null);
-        setAnalysisResponse(null);
-        // Process image with Gemini API
-        await processImageWithGemini(imageUri);
+        // Navigate to AIProcessScreen to perform analysis
+        navigation.navigate('AIProcess', {
+          imageUri: imageUri,
+          habit: habit,
+        });
       }
     } catch (error) {
       console.error('Error opening image library:', error);
@@ -120,50 +261,30 @@ export default function HabitDetailScreen({ route, navigation }) {
     }
   };
 
-  // Process image with Gemini API (TESTING: Not actually uploading to Gemini)
-  const processImageWithGemini = async (imageUri) => {
-    setIsProcessing(true);
-    try {
-      // TESTING: Skip actual API call and return mock response
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Mock response - testing if it returns message only
-      const mockResponse = {
-        success: true,
-        data: {
-          response: 'This is a test response message. The image shows progress related to your habit: ' + habit.title
-        }
-      };
-      
-      if (mockResponse.success) {
-        setImageAnalysisResult('success');
-        setAnalysisResponse(mockResponse.data);
-      } else {
-        setImageAnalysisResult('fail');
-        setAnalysisResponse(mockResponse.error);
-      }
-    } catch (error) {
-      console.error('Error processing image:', error);
-      setImageAnalysisResult('fail');
-      setAnalysisResponse('Failed to analyze image. Please try again.');
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView 
-        style={styles.content} 
-        contentContainerStyle={styles.contentContainer}
-        showsVerticalScrollIndicator={false}
-      >
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+          <Text style={styles.loadingText}>Loading habit...</Text>
+        </View>
+      ) : (
+        <ScrollView 
+          style={styles.content} 
+          contentContainerStyle={styles.contentContainer}
+          showsVerticalScrollIndicator={false}
+        >
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity 
             style={styles.headerButton}
-            onPress={() => navigation.goBack()}
+            onPress={() => {
+              // Navigate to Home screen (Main tab navigator with Home tab)
+              navigation.reset({
+                index: 0,
+                routes: [{ name: 'Main' }],
+              });
+            }}
           >
             <ArrowLeft size={20} color={COLORS.textGrey} />
           </TouchableOpacity>
@@ -171,14 +292,30 @@ export default function HabitDetailScreen({ route, navigation }) {
           <View style={styles.headerRight}>
             <TouchableOpacity 
               style={styles.headerButton}
-              onPress={() => navigation.navigate('AddHabit', { habit: habit, isEditing: true })}
+              onPress={handleEdit}
             >
               <Pen size={20} color={COLORS.textGrey} />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.headerButton}>
+            <TouchableOpacity 
+              style={styles.headerButton}
+              onPress={() => setShowMenu(!showMenu)}
+            >
               <MoreVertical size={20} color={COLORS.textGrey} />
             </TouchableOpacity>
           </View>
+          
+          {/* Menu dropdown */}
+          {showMenu && (
+            <View style={styles.menuContainer}>
+              <TouchableOpacity 
+                style={styles.menuItem}
+                onPress={handleDelete}
+              >
+                <Trash2 size={18} color="#FF6B6B" />
+                <Text style={styles.menuItemTextDelete}>Delete Habit</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
 
         {/* Habit Icon */}
@@ -189,10 +326,10 @@ export default function HabitDetailScreen({ route, navigation }) {
         </View>
 
         {/* Habit Title */}
-        <Text style={styles.habitTitle}>{habit.title}</Text>
+        <Text style={styles.habitTitle}>{habit.title || habit.habitName || 'Untitled Habit'}</Text>
         
         {/* Target */}
-        <Text style={styles.target}>{habit.target}</Text>
+        <Text style={styles.target}>{habit.target || `target: ${habit.frequency || 'daily'}`}</Text>
 
         {/* Streak Card */}
         <View style={styles.streakCard}>
@@ -222,48 +359,12 @@ export default function HabitDetailScreen({ route, navigation }) {
           </TouchableOpacity>
         </View>
 
-        {/* Display selected image if available */}
-        {selectedImage && (
-          <View style={styles.selectedImageContainer}>
-            <Image source={{ uri: selectedImage }} style={styles.selectedImage} />
-            
-            {/* Processing State */}
-            {isProcessing && (
-              <View style={styles.analysisContainer}>
-                <ActivityIndicator size="large" color={COLORS.textDark} />
-                <Text style={styles.analysisText}>Analyzing image...</Text>
-              </View>
-            )}
-
-            {/* Success State */}
-            {!isProcessing && imageAnalysisResult === 'success' && (
-              <View style={[styles.analysisContainer, styles.successContainer]}>
-                <Text style={styles.successIcon}>✓</Text>
-                <Text style={styles.successText}>Image verified successfully!</Text>
-                {analysisResponse?.response && (
-                  <Text style={styles.responseText}>{analysisResponse.response}</Text>
-                )}
-              </View>
-            )}
-
-            {/* Fail State */}
-            {!isProcessing && imageAnalysisResult === 'fail' && (
-              <View style={[styles.analysisContainer, styles.failContainer]}>
-                <Text style={styles.failIcon}>✗</Text>
-                <Text style={styles.failText}>Image verification failed</Text>
-                {analysisResponse && (
-                  <Text style={styles.errorText}>{analysisResponse}</Text>
-                )}
-              </View>
-            )}
-          </View>
-        )}
-
         {/* Skip Button */}
-        <TouchableOpacity style={styles.skipButton}>
+        <TouchableOpacity style={styles.skipButton} onPress={handleSkipToday}>
           <Text style={styles.skipText}>skip for today</Text>
         </TouchableOpacity>
-      </ScrollView>
+        </ScrollView>
+      )}
     </SafeAreaView>
   );
 }
@@ -421,77 +522,44 @@ const styles = StyleSheet.create({
     color: COLORS.textLight,
     fontFamily: FONTS.anton,
   },
-  selectedImageContainer: {
-    marginHorizontal: 20,
-    marginTop: 20,
-    marginBottom: 20,
-    alignItems: 'center',
-  },
-  selectedImage: {
-    width: '100%',
-    height: 300,
-    borderRadius: 16,
-    resizeMode: 'cover',
-  },
-  analysisContainer: {
-    marginTop: 16,
-    padding: 16,
+  menuContainer: {
+    position: 'absolute',
+    top: 60,
+    right: 20,
+    backgroundColor: COLORS.white,
     borderRadius: 12,
+    padding: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
+    zIndex: 1000,
+    minWidth: 160,
+  },
+  menuItem: {
+    flexDirection: 'row',
     alignItems: 'center',
-    width: '100%',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    gap: 12,
   },
-  successContainer: {
-    backgroundColor: '#E8F5E9',
-    borderWidth: 1,
-    borderColor: '#4CAF50',
-  },
-  failContainer: {
-    backgroundColor: '#FFEBEE',
-    borderWidth: 1,
-    borderColor: '#F44336',
-  },
-  successIcon: {
-    fontSize: 32,
-    color: '#4CAF50',
-    marginBottom: 8,
-  },
-  failIcon: {
-    fontSize: 32,
-    color: '#F44336',
-    marginBottom: 8,
-  },
-  successText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#2E7D32',
-    fontFamily: FONTS.anton,
-    marginBottom: 4,
-  },
-  failText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#C62828',
-    fontFamily: FONTS.anton,
-    marginBottom: 4,
-  },
-  analysisText: {
+  menuItemTextDelete: {
     fontSize: 14,
-    color: COLORS.textDark,
+    fontWeight: '600',
+    color: '#FF6B6B',
     fontFamily: FONTS.anton,
-    marginTop: 8,
   },
-  responseText: {
-    fontSize: 12,
-    color: '#2E7D32',
-    fontFamily: FONTS.anton,
-    marginTop: 8,
-    textAlign: 'center',
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
   },
-  errorText: {
-    fontSize: 12,
-    color: '#C62828',
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: COLORS.textGrey,
     fontFamily: FONTS.anton,
-    marginTop: 8,
-    textAlign: 'center',
   },
 });

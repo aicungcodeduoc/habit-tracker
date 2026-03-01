@@ -1,0 +1,30 @@
+---
+description: Đồng bộ schema và types khi có thay đổi database từ bất kỳ ai
+globs: "**/supabase/**/*.sql,**/supabase/**/*.ts,scripts/gen-types.js,.env*"
+alwaysApply: false
+---
+
+# Sync database khi có thay đổi schema
+
+Khi một người thay đổi schema trên Supabase (thêm file migration mới rồi áp lên DB), mọi người cần đồng bộ như sau.
+
+## Migrations là gì
+
+Mỗi lần đổi schema = **thêm file SQL mới** vào `supabase/migrations/`. Tên file: `YYYYMMDDHHMMSS_mô_tả_ngắn.sql` (ví dụ: `20260301120000_add_habit_notes.sql`). Các file chạy theo thứ tự tên; không sửa file migration đã áp lên DB.
+
+## Người thay đổi schema
+
+1. **Thêm file** migration mới trong `supabase/migrations/`, rồi áp lên Supabase (Dashboard hoặc `supabase db push`).
+2. Chạy **`npm run gen:types`** (cần `SUPABASE_DB_URL` hoặc `SUPABASE_PROJECT_ID` + `SUPABASE_ACCESS_TOKEN` trong `.env`).
+3. Commit **migration file(s)** và **`supabase/types.ts`**, rồi push.
+
+## Người còn lại (sync theo code)
+
+1. **Pull** code mới (có migration + `supabase/types.ts` đã được commit).
+2. Không cần chạy gì thêm — types đã đồng bộ qua git.
+3. Nếu muốn tự sinh lại types từ DB: chạy **`npm run gen:types`** (cần cấu hình `.env` như trên).
+
+## Lưu ý
+
+- **Không sửa tay** `supabase/types.ts` — file này luôn generate từ DB.
+- Cập nhật **`docs/database-schema.md`** khi thêm/sửa bảng hoặc quan hệ.

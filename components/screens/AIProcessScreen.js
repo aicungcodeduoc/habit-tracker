@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import { BlurView } from 'expo-blur';
 import { COLORS } from '../../config/colors';
 import { FONTS } from '../../config/fonts';
 import Svg, { Circle } from 'react-native-svg';
+import { analyzeImageWithGemini } from '../../src/api/geminiService';
 
 const { width } = Dimensions.get('window');
 
@@ -21,10 +22,13 @@ const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 export default function AIProcessScreen({ route, navigation }) {
   const imageUri = route?.params?.imageUri || null;
-  const progressAnim = useRef(new Animated.Value(0)).current;
-  const pulseAnim = useRef(new Animated.Value(1)).current;
-  const containerAnim = useRef(new Animated.Value(0)).current;
-  const rotateAnim = useRef(new Animated.Value(0)).current;
+  const habit = route?.params?.habit || { title: '' };
+  const [analysisResult, setAnalysisResult] = useState(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(true);
+  const [progressAnim] = useState(() => new Animated.Value(0));
+  const [pulseAnim] = useState(() => new Animated.Value(1));
+  const [containerAnim] = useState(() => new Animated.Value(0));
+  const [rotateAnim] = useState(() => new Animated.Value(0));
 
   useEffect(() => {
     // Container entrance animation
@@ -33,13 +37,6 @@ export default function AIProcessScreen({ route, navigation }) {
       tension: 50,
       friction: 7,
       useNativeDriver: true,
-    }).start();
-
-    // Progress animation (0 to 0.3 = 30%)
-    Animated.timing(progressAnim, {
-      toValue: 0.3,
-      duration: 2000,
-      useNativeDriver: false,
     }).start();
 
     // Pulse animation for the card
@@ -78,14 +75,70 @@ export default function AIProcessScreen({ route, navigation }) {
         }),
       ])
     ).start();
-  }, []);
+
+    // Start analysis when component mounts
+    const performAnalysis = async () => {
+      if (!imageUri || !habit.title) return;
+      
+      try {
+        // Animate progress from 0 to 0.5 (50%) during analysis
+        Animated.timing(progressAnim, {
+          toValue: 0.5,
+          duration: 2000,
+          useNativeDriver: false,
+        }).start();
+
+        // Perform actual analysis
+        const result = await analyzeImageWithGemini(imageUri, habit.title);
+
+        // Animate progress to 1.0 (100%) on completion
+        Animated.timing(progressAnim, {
+          toValue: 1.0,
+          duration: 1000,
+          useNativeDriver: false,
+        }).start();
+
+        setIsAnalyzing(false);
+        setAnalysisResult(result);
+
+        // Navigate to AIResultScreen after a delay
+        setTimeout(() => {
+          if (result.success) {
+            // Navigate to AIResultScreen with analysis result
+            navigation.navigate('AIResult', {
+              imageUri: imageUri,
+              habit: habit,
+              analysisResult: result,
+            });
+          } else {
+            // Navigate to AIResultScreen even for errors to show error message
+            navigation.navigate('AIResult', {
+              imageUri: imageUri,
+              habit: habit,
+              analysisResult: result,
+            });
+          }
+        }, 2000);
+      } catch (error) {
+        console.error('Error in analysis:', error);
+        setIsAnalyzing(false);
+        setAnalysisResult({
+          success: false,
+          error: error.message || 'Failed to analyze image',
+        });
+      }
+    };
+
+    performAnalysis();
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- run on imageUri/habit change only; anim refs stable
+  }, [imageUri, habit.title]);
 
   const radius = 60;
   const circumference = 2 * Math.PI * radius;
-  // Calculate strokeDashoffset for progress (0 to 0.3 = 30%)
+  // Calculate strokeDashoffset for progress (0 to 1.0 = 100%)
   const strokeDashoffset = progressAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [circumference, circumference * 0.7], // 30% progress = 70% remaining
+    outputRange: [circumference, 0], // 100% progress = 0 remaining
   });
 
   const scale = containerAnim.interpolate({
@@ -184,10 +237,18 @@ export default function AIProcessScreen({ route, navigation }) {
 
               {/* Text Content */}
               <Text style={styles.mainText}>
-                AI Buddy is checking your progress...
+                {isAnalyzing 
+                  ? 'AI Buddy is checking your progress...'
+                  : analysisResult?.success
+                  ? 'Progress verified! ✓'
+                  : 'Analysis failed'}
               </Text>
               <Text style={styles.subText}>
-                Identifying habit completion
+                {isAnalyzing 
+                  ? 'Identifying habit completion'
+                  : analysisResult?.success
+                  ? analysisResult?.data?.response || 'Your progress has been recorded'
+                  : analysisResult?.error || 'Please try again'}
               </Text>
             </View>
           </Animated.View>
@@ -195,8 +256,10 @@ export default function AIProcessScreen({ route, navigation }) {
 
         {/* Bottom Processing Indicator */}
         <View style={styles.bottomIndicator}>
-          <View style={styles.greenDot} />
-          <Text style={styles.processingText}>Processing image</Text>
+          <View style={[styles.greenDot, !isAnalyzing && analysisResult?.success && styles.successDot]} />
+          <Text style={styles.processingText}>
+            {isAnalyzing ? 'Processing image' : analysisResult?.success ? 'Analysis complete' : 'Analysis failed'}
+          </Text>
         </View>
       </View>
     </SafeAreaView>
@@ -311,6 +374,9 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: COLORS.primary,
     marginRight: 8,
+  },
+  successDot: {
+    backgroundColor: '#4CAF50',
   },
   processingText: {
     fontSize: 14,

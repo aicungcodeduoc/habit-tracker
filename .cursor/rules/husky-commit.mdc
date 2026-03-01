@@ -1,0 +1,24 @@
+---
+description: Husky pre-commit hook — lint trước khi commit, commit sạch không lỗi
+globs: ".husky/**/*,package.json"
+alwaysApply: false
+---
+
+# Husky & commit sạch
+
+## Pre-commit
+
+Khi `git commit`, **Husky** chạy **lint-staged**: chỉ các file đã stage (`.js`, `.jsx`, `.ts`, `.tsx`) được đưa qua **ESLint --fix**. Nếu còn **error** sau khi fix, commit bị chặn.
+
+- Sửa hết lỗi (hoặc tạm bỏ stage file lỗi) rồi commit lại.
+- Chạy `npm run lint` để kiểm tra toàn bộ repo.
+
+## Cấu hình
+
+- **Hook**: `.husky/pre-commit` → `npx lint-staged`
+- **lint-staged** (trong `package.json`): `*.{js,jsx,ts,tsx}` → `eslint --fix`
+- **ESLint**: `.eslintrc.cjs` (extends `expo`), bỏ qua `node_modules/`, `supabase/types.ts`
+
+## Bỏ qua hook (chỉ khi cần)
+
+`git commit --no-verify` — dùng tạm (ví dụ hotfix); tránh lạm dụng.

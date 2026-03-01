@@ -1,0 +1,38 @@
+---
+description: Quy ước làm việc chung cho team (branch, commit, cấu trúc, bảo mật)
+alwaysApply: true
+---
+
+# Quy ước cho team (lập trình viên làm chung)
+
+## Cấu trúc & import
+- **Code mới** đặt trong `src/`: `src/api`, `src/components`, `src/screens`, `src/hooks`, `src/utils`, `src/navigation`.
+- **Import** từ `src/`: dùng `../api`, `../utils`, `../components`, `../screens`, `../hooks` (không import từ `config/`, `services/` khi viết code trong `src/`).
+- **Assets** dùng thư mục `assets/` ở root; tham chiếu bằng `require('../../assets/...')` từ trong `src/`.
+
+## Git & branch
+- **Branch**: đặt tên rõ ràng, ví dụ `feature/ten-tinh-nang`, `fix/ten-loi`, `refactor/ten-vung`.
+- **Commit**: message ngắn gọn, có thể dùng tiếng Anh hoặc tiếng Việt; tránh commit quá nhiều thay đổi không liên quan trong một commit.
+
+## Bảo mật
+- **Không commit** key, secret, URL/anon key thật vào repo. Dùng biến môi trường (`.env`, `EXPO_PUBLIC_*`) và thêm `.env` vào `.gitignore`.
+- Supabase: chỉ dùng **anon key** ở client; không dùng service role key trong app.
+
+## Database
+- Mọi thay đổi schema qua **migration** trong `supabase/migrations/` (tên file: timestamp + mô tả). Chi tiết migrations + sync: xem **database-sync.mdc**.
+- Sau khi đổi DB: chạy `npm run gen:types`, commit `supabase/types.ts`. **Không sửa tay** `supabase/types.ts`.
+- Cập nhật `docs/database-schema.md` khi thêm/sửa bảng hoặc quan hệ.
+
+## Tài liệu
+- Kiến trúc & luồng: đọc/cập nhật `docs/architecture.md`.
+- Schema DB: đọc/cập nhật `docs/database-schema.md`.
+- Yêu cầu sản phẩm / đặc tả: đặt trong `prd/` (nếu có).
+
+## Commit & Husky
+- **Pre-commit** chạy ESLint trên file staged; có lỗi thì commit bị chặn. Chi tiết: **husky-commit.mdc**.
+
+## Trước khi merge / review
+- Code trong `src/` dùng đúng cấu trúc (api, components, screens, utils).
+- Không có import trực tiếp từ `config/` hoặc `services/` trong file thuộc `src/` (trừ khi đang refactor từng bước).
+- Đổi DB thì có migration + đã gen types + đã cập nhật docs nếu cần.
+- Không lộ secret trong diff.

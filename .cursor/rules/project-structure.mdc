@@ -1,0 +1,30 @@
+---
+description: Project stack, folder structure, and where to put code
+alwaysApply: true
+---
+
+# Project structure & conventions
+
+## Stack
+- **Frontend**: React Native (Expo). **Backend**: Supabase. **Language**: JavaScript.
+
+## Preferred structure (src/)
+- **`src/api/`** — Supabase client, habitService, completionService, geminiService, onboardingService. All data/API calls go here.
+- **`src/components/`** — UI only: atoms, molecules, organisms (Atomic Design). Use `src/utils` for colors/fonts.
+- **`src/screens/`** — Full-screen components (Home, Profile, AddHabit, etc.).
+- **`src/hooks/`** — Custom hooks (e.g. useStepAnimation).
+- **`src/navigation/`** — React Navigation / Expo Router config.
+- **`src/utils/`** — COLORS, FONTS, getFontFamily, helpers (format date, validate).
+- **`src/store/`**, **`src/types/`** — State and shared types (placeholders until used).
+
+## Imports from src/
+- Prefer importing from `src/` entry points: `../api`, `../utils`, `../components`, `../screens`, `../hooks`.
+- Do not import from legacy `config/`, `services/`, or root `components/` when adding new code; use `src/` equivalents.
+
+## Docs & config
+- **`docs/architecture.md`** — Architecture and type-gen flow. **`docs/database-schema.md`** — DB summary.
+- **`supabase/migrations/`** — Single source of truth for DB schema. **`supabase/types.ts`** — Auto-generated; do not edit by hand.
+- **`.cursorrules`** — High-level project rules; keep in sync with `.cursor/rules/`.
+
+## Assets
+- **`assets/`** at project root for fonts, images. Reference with `require('../../assets/...')` from inside `src/`.

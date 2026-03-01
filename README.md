@@ -25,14 +25,16 @@ npm install
 
 ### 3. Configure Environment Variables
 
-Create a `.env` file in the root directory:
+Create a `.env` file in the root directory (see `.env.example` for a template):
 
 ```env
 EXPO_PUBLIC_SUPABASE_URL=your_supabase_project_url
 EXPO_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+EXPO_PUBLIC_GEMINI_API_KEY=your_gemini_api_key
 ```
 
-**Important:** Update `config/supabase.js` with your credentials if you don't use environment variables.
+- **Supabase:** Get URL and anon key from Project Settings > API in your Supabase dashboard.
+- **Gemini:** Get an API key from [Google AI Studio](https://aistudio.google.com/) (used for image analysis / AI features). Do not commit `.env` or real keys to the repo.
 
 ### 4. Run the App
 

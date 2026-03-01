@@ -40,14 +40,8 @@ export default function HowOftenScreen({ navigation, route }) {
   };
 
   const handleNext = () => {
-    // TODO: Navigate to next step or save habit
-    const habitData = {
-      ...route?.params,
-      frequency,
-      reminders: remindersEnabled,
-      reminderTime: selectedTime,
-      selectedDays: frequency === 'weekly' ? selectedDays : null,
-    };
+    // TODO: Navigate to next step or save habit (habitData for next screen when wired)
+    // const habitData = { ...route?.params, frequency, reminders: remindersEnabled, reminderTime: selectedTime, selectedDays: frequency === 'weekly' ? selectedDays : null };
     // navigation.navigate('NextStep', { habit: habitData });
   };
 

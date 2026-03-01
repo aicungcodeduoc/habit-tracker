@@ -1,0 +1,17 @@
+# Project rules (AI & dev)
+
+- **Stack**: React Native (Expo), Supabase. Language: JavaScript.
+- **Structure**: `src/` (api, components, hooks, screens, navigation, store, types, utils), `config/`, `database/`, `supabase/`, `docs/`. Legacy: `components/`, `services/` (re-exported via src).
+
+## Architecture & schema
+
+- Read architecture and flow in `docs/architecture.md`.
+- Read DB schema summary in `docs/database-schema.md`; SQL SSOT is `supabase/migrations/`.
+- DB types live in `supabase/types.ts` — **auto-generated from DB via Supabase CLI; do not edit by hand.**
+
+## When changing the database
+
+1. Add a new migration file in `supabase/migrations/` (timestamp + descriptive name).
+2. Run type generation (`npm run gen:types`), then commit updated `supabase/types.ts`.
+3. Update `docs/database-schema.md` if tables or relationships change.
+4. Others sync by pulling (migrations + `supabase/types.ts`). Full workflow: `.cursor/rules/database-sync.mdc`.
