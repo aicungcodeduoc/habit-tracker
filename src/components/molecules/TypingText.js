@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Text, Animated } from 'react-native';
+import { Text } from 'react-native';
 
 /**
  * TypingText - Component that displays text with a typing animation
@@ -13,7 +13,7 @@ import { Text, Animated } from 'react-native';
  */
 export const TypingText = ({ text, speed = 50, style, onComplete }) => {
   const [displayedText, setDisplayedText] = useState('');
-  const [isComplete, setIsComplete] = useState(false);
+  const [, setIsComplete] = useState(false);
 
   useEffect(() => {
     if (!text) return;

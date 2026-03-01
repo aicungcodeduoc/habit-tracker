@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, SafeAreaView, Text, TouchableOpacity, ScrollView, TextInput, Switch, Platform, Animated, ActivityIndicator, Alert } from 'react-native';
 import { ChevronLeft, ChevronRight, Home, Briefcase, TreePine, Dumbbell, Coffee, MapPin, Check } from 'lucide-react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Haptics from 'expo-haptics';
 import { COLORS } from '../../config/colors';
 import { FONTS } from '../../config/fonts';
-import { createHabit, updateHabit, getHabitById } from '../../services/habitService';
+import { createHabit, updateHabit, getHabitById } from '../../src/api/habitService';
 
 export default function AddHabitScreen({ route, navigation }) {
   // Get habit data from route params if editing
@@ -13,7 +13,6 @@ export default function AddHabitScreen({ route, navigation }) {
   const isEditing = route?.params?.isEditing || false;
 
   const [currentStep, setCurrentStep] = useState(1);
-  const totalSteps = 3;
 
   // Step 1 states
   const [selectedHabit, setSelectedHabit] = useState(null);
@@ -39,12 +38,12 @@ export default function AddHabitScreen({ route, navigation }) {
 
   // Loading and error states
   const [isSaving, setIsSaving] = useState(false);
-  const [saveError, setSaveError] = useState(null);
+  const [, setSaveError] = useState(null);
 
   // Animation values for step transitions
-  const step1Anim = useRef(new Animated.Value(0)).current;
-  const step2Anim = useRef(new Animated.Value(0)).current;
-  const step3Anim = useRef(new Animated.Value(0)).current;
+  const [step1Anim] = useState(() => new Animated.Value(0));
+  const [step2Anim] = useState(() => new Animated.Value(0));
+  const [step3Anim] = useState(() => new Animated.Value(0));
 
   const quickSuggestions = ['Drink water', 'Read', 'Meditation', 'Walk outside'];
 
@@ -71,6 +70,7 @@ export default function AddHabitScreen({ route, navigation }) {
   useEffect(() => {
     step2Anim.setValue(400); // Start step 2 off-screen
     step3Anim.setValue(400); // Start step 3 off-screen
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- init once on mount
   }, []);
 
   // Initialize form with habit data when editing
@@ -189,6 +189,7 @@ export default function AddHabitScreen({ route, navigation }) {
         }),
       ]).start();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- only react to currentStep; anim refs stable
   }, [currentStep]);
 
   const handleHabitSelect = (habit) => {

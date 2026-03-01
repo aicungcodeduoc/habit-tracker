@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -11,8 +11,8 @@ import {
 import { Check } from 'lucide-react-native';
 import { COLORS } from '../../config/colors';
 import { FONTS } from '../../config/fonts';
-import { createCompletion, getCompletion, getCompletionsForHabit } from '../../services/completionService';
-import { saveCompletionImage } from '../../services/habitService';
+import { createCompletion, getCompletion, getCompletionsForHabit } from '../../src/api/completionService';
+import { saveCompletionImage } from '../../src/api/habitService';
 
 // Format date as YYYY-MM-DD in local timezone
 const formatLocalDate = (date = new Date()) => {
@@ -41,10 +41,10 @@ const getWeekRangeMondayStart = (refDate = new Date()) => {
 
 export default function HabitSuccessScreen({ route, navigation }) {
   const { habit, imageUri } = route?.params || {};
-  const scaleAnim = useRef(new Animated.Value(0)).current;
-  const rippleAnim1 = useRef(new Animated.Value(0)).current;
-  const rippleAnim2 = useRef(new Animated.Value(0)).current;
-  const rippleAnim3 = useRef(new Animated.Value(0)).current;
+  const [scaleAnim] = useState(() => new Animated.Value(0));
+  const [rippleAnim1] = useState(() => new Animated.Value(0));
+  const [rippleAnim2] = useState(() => new Animated.Value(0));
+  const [rippleAnim3] = useState(() => new Animated.Value(0));
 
   const [weekLoading, setWeekLoading] = useState(false);
   const [weekCompletedDates, setWeekCompletedDates] = useState(new Set());
@@ -184,6 +184,7 @@ export default function HabitSuccessScreen({ route, navigation }) {
     createRipple(rippleAnim1, 0).start();
     createRipple(rippleAnim2, 400).start();
     createRipple(rippleAnim3, 800).start();
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount; anim refs stable
   }, []);
 
   const handleContinue = () => {

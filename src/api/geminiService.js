@@ -1,12 +1,28 @@
 /**
- * Gemini API Service - Handles image analysis using Google Gemini API
+ * Gemini API Service - Handles image analysis using Google Gemini API.
+ * Requires EXPO_PUBLIC_GEMINI_API_KEY in .env (get key from Google AI Studio).
  */
 
 import * as FileSystem from 'expo-file-system/legacy';
 
-const GEMINI_API_KEY = 'AIzaSyCKq-O2F3Zckf7b-poc9sUpqYxap5n2ULo';
 const GEMINI_MODEL = 'gemini-3-flash-preview';
-const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
+
+function getGeminiApiUrl() {
+  const key = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
+  if (!key || String(key).trim() === '') {
+    if (typeof __DEV__ !== 'undefined' && __DEV__) {
+      console.warn(
+        'Missing EXPO_PUBLIC_GEMINI_API_KEY in .env. Gemini API calls will fail. Get key from Google AI Studio.'
+      );
+    } else {
+      throw new Error(
+        'Missing EXPO_PUBLIC_GEMINI_API_KEY. Set it in .env (get key from Google AI Studio).'
+      );
+    }
+    return null;
+  }
+  return `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${key}`;
+}
 
 const convertImageToBase64 = async (imageUri) => {
   try {
@@ -22,6 +38,8 @@ const convertImageToBase64 = async (imageUri) => {
 
 export const analyzeImageWithGemini = async (imageUri, habitTitle = '') => {
   try {
+    const apiUrl = getGeminiApiUrl();
+    if (!apiUrl) throw new Error('EXPO_PUBLIC_GEMINI_API_KEY is not set in .env.');
     const base64Image = await convertImageToBase64(imageUri);
 
     const promptText = `Analyze this image and determine if it shows progress related to the habit: "${habitTitle}". 
@@ -58,7 +76,7 @@ The message should be conversational and encouraging, like an AI buddy talking t
       ]
     };
 
-    const response = await fetch(GEMINI_API_URL, {
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -157,11 +175,13 @@ Example style: "Starting your journey with [habit] is a beautiful commitment to 
 
 Generate ONLY the compliment message text, nothing else.`;
 
+    const apiUrl = getGeminiApiUrl();
+    if (!apiUrl) throw new Error('EXPO_PUBLIC_GEMINI_API_KEY is not set in .env.');
     const payload = {
       contents: [{ parts: [{ text: promptText }] }]
     };
 
-    const response = await fetch(GEMINI_API_URL, {
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),

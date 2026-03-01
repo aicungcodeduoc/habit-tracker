@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native
 import { Check } from 'lucide-react-native';
 import { COLORS } from '../../config/colors';
 import { FONTS } from '../../config/fonts';
-import { toggleCompletion } from '../../services/completionService';
+import { toggleCompletion } from '../../src/api/completionService';
 
 /**
  * HabitItem - A component displaying a single habit item with completion state
@@ -47,6 +47,7 @@ export const HabitItem = ({
       checkmarkScale.setValue(1);
       titleOpacity.setValue(0.6);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- init anim values once on mount
   }, []);
 
   // Update local state when prop changes
@@ -60,6 +61,7 @@ export const HabitItem = ({
       
       return () => clearTimeout(timeout);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- only react to completed; animateToCompleted stable
   }, [completed]);
 
   const animateToCompleted = (isCompleted) => {

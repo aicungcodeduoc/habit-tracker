@@ -4,8 +4,8 @@ import { ArrowLeft, Pen, MoreVertical, Flame, Camera, Image as ImageIcon, Trash2
 import * as ImagePicker from 'expo-image-picker';
 import { COLORS } from '../../config/colors';
 import { FONTS } from '../../config/fonts';
-import { deleteHabit, getHabitById } from '../../services/habitService';
-import { getCompletion, createCompletion } from '../../services/completionService';
+import { deleteHabit, getHabitById } from '../../src/api/habitService';
+import { getCompletion } from '../../src/api/completionService';
 
 // Function to get emoji icon based on habit title
 const getHabitEmoji = (title) => {
@@ -43,7 +43,7 @@ export default function HabitDetailScreen({ route, navigation }) {
     icon: 'water',
   });
   const [loading, setLoading] = useState(!!routeHabit?.id);
-  const [isCompletedToday, setIsCompletedToday] = useState(false);
+  const [, setIsCompletedToday] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
 
   // Fetch habit data from Supabase if ID is provided

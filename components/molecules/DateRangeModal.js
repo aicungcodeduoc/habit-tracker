@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   TouchableWithoutFeedback,
-  SafeAreaView,
 } from 'react-native';
 import { FONTS } from '../../config/fonts';
 

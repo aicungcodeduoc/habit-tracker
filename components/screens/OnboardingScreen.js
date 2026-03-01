@@ -17,13 +17,13 @@ import {
 import * as Notifications from 'expo-notifications';
 import { useNavigation } from '@react-navigation/native';
 import { FONTS } from '../../config/fonts';
-import { ChevronLeft, ChevronRight, Sparkles, Star } from 'lucide-react-native';
+import { ChevronRight, Sparkles } from 'lucide-react-native';
 import { OnboardingImage, OnboardingHeading } from '../molecules';
 import { useStepAnimation } from '../hooks';
 import { supabase } from '../../config/supabase';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
-import { saveOnboardingData, syncOnboardingToDatabase } from '../../services/onboardingService';
+import { saveOnboardingData, syncOnboardingToDatabase } from '../../src/api/onboardingService';
 
 // Complete the OAuth flow
 WebBrowser.maybeCompleteAuthSession();
@@ -280,6 +280,7 @@ export default function OnboardingScreen() {
       buttonAnimations.forEach(anim => anim.setValue(0));
       buttonExitAnimations.forEach(anim => anim.setValue(0));
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- only react to currentStep
   }, [currentStep]);
 
   const handleNext = async () => {
@@ -487,11 +488,6 @@ export default function OnboardingScreen() {
       console.error('Google sign in error:', error);
       Alert.alert('Error', error.message || 'Failed to sign in with Google. Please try again.');
     }
-  };
-
-  const handleSkip = () => {
-    // Skip onboarding and go to Main
-    navigation.replace('Main');
   };
 
   const handleSuggestedHabit = (habit) => {

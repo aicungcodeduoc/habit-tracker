@@ -6,14 +6,13 @@ import {
   Text, 
   ScrollView, 
   TouchableOpacity,
-  ActivityIndicator,
   Image
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Upload } from 'lucide-react-native';
 import { COLORS } from '../../config/colors';
 import { FONTS } from '../../config/fonts';
-import { getCategories, getHabitsByCategory, getHabits, getCategoryCompletionsWithImages, getAllCategoryCompletions } from '../../services/habitService';
+import { getCategories, getHabitsByCategory, getHabits, getCategoryCompletionsWithImages, getAllCategoryCompletions } from '../../src/api/habitService';
 
 export default function StreaksScreen() {
   const [selectedCategory, setSelectedCategory] = useState(null);
@@ -22,7 +21,7 @@ export default function StreaksScreen() {
   const [categoryHabits, setCategoryHabits] = useState([]);
   const [weeklyCompletions, setWeeklyCompletions] = useState({});
   const [allCompletions, setAllCompletions] = useState([]);
-  const [loadingCompletions, setLoadingCompletions] = useState(false);
+  const [, setLoadingCompletions] = useState(false);
 
   // Get current week dates (Sunday to Saturday) using local timezone
   const getCurrentWeekDates = () => {
@@ -146,7 +145,8 @@ export default function StreaksScreen() {
   useEffect(() => {
     loadCategories();
     loadAllHabits();
-  }, []); // Empty dependency array - only run once
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount
+  }, []);
 
   // Load all completions for category (for stats calculation)
   const loadAllCompletions = useCallback(async (category) => {

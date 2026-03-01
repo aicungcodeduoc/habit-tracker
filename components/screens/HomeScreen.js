@@ -5,8 +5,8 @@ import { Plus } from 'lucide-react-native';
 import { DateHeader, WeekOverview, HabitItem } from '../molecules';
 import { COLORS } from '../../config/colors';
 import { FONTS } from '../../config/fonts';
-import { getHabits } from '../../services/habitService';
-import { getCompletionsForDateRange } from '../../services/completionService';
+import { getHabits } from '../../src/api/habitService';
+import { getCompletionsForDateRange } from '../../src/api/completionService';
 
 // Simple emoji mapping based on title keywords
 const getEmoji = (title) => {

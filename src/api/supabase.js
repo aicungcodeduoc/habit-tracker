@@ -1,16 +1,30 @@
 import { createClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Get Supabase URL and Anon Key from environment variables
-// For development, you can temporarily set these here, but use environment variables in production
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || 'YOUR_SUPABASE_URL';
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'YOUR_SUPABASE_ANON_KEY';
+/**
+ * Supabase client. Requires EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY in .env.
+ * In production, missing env throws. In development, missing env logs a warning and uses placeholders so the app can boot.
+ */
+const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 
-if (!supabaseUrl || supabaseUrl === 'YOUR_SUPABASE_URL' || !supabaseAnonKey || supabaseAnonKey === 'YOUR_SUPABASE_ANON_KEY') {
-  console.warn('Missing Supabase environment variables. Please set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY');
+const missing = !supabaseUrl || !supabaseAnonKey;
+if (missing) {
+  if (typeof __DEV__ !== 'undefined' && __DEV__) {
+    console.warn(
+      'Missing Supabase env. Set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY in .env. Using placeholders; API calls will fail.'
+    );
+  } else {
+    throw new Error(
+      'Missing EXPO_PUBLIC_SUPABASE_URL or EXPO_PUBLIC_SUPABASE_ANON_KEY. Set them in .env before running the app.'
+    );
+  }
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+const url = supabaseUrl || 'https://placeholder.supabase.co';
+const key = supabaseAnonKey || 'placeholder-anon-key';
+
+export const supabase = createClient(url, key, {
   auth: {
     storage: AsyncStorage,
     autoRefreshToken: true,

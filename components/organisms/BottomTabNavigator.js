@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { View, TouchableOpacity, StyleSheet, Text, Animated } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -25,7 +25,7 @@ try {
   const liquidGlass = require('@callstack/liquid-glass');
   LiquidGlassView = liquidGlass.LiquidGlassView;
   isLiquidGlassSupported = liquidGlass.isLiquidGlassSupported;
-} catch (error) {
+} catch (_err) {
   // Liquid glass not available, will use BlurView fallback
   console.log('Liquid glass not available, using BlurView fallback');
 }
@@ -34,8 +34,8 @@ const Tab = createBottomTabNavigator();
 
 // Custom Tab Bar Component with pill-shaped design and smooth animation
 function CustomTabBar({ state, descriptors, navigation }) {
-  const translateX = useRef(new Animated.Value(0)).current;
-  const backgroundWidth = useRef(new Animated.Value(0)).current;
+  const [translateX] = useState(() => new Animated.Value(0));
+  const [backgroundWidth] = useState(() => new Animated.Value(0));
   const tabLayouts = useRef([]);
   const containerLayout = useRef(null);
   const isInitialized = useRef(false);
@@ -83,6 +83,7 @@ function CustomTabBar({ state, descriptors, navigation }) {
   useEffect(() => {
     const currentIndex = state.index;
     updateBackgroundPosition(currentIndex, isInitialized.current);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- only react to tab index
   }, [state.index]);
 
   const handleTabLayout = (index, event) => {

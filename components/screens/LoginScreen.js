@@ -14,7 +14,7 @@ import { FONTS } from '../../config/fonts';
 import { supabase } from '../../config/supabase';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
-import { syncOnboardingToDatabase } from '../../services/onboardingService';
+import { syncOnboardingToDatabase } from '../../src/api/onboardingService';
 
 // Complete the OAuth flow
 WebBrowser.maybeCompleteAuthSession();

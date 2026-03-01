@@ -61,6 +61,7 @@ export function useStepAnimation(currentStep, targetStep, config = {}) {
     } else {
       resetAnimations();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- only react to step change
   }, [currentStep, targetStep]);
 
   const triggerExit = (onComplete) => {

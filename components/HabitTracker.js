@@ -10,7 +10,6 @@ import {
   ScrollView,
   ActivityIndicator,
   SafeAreaView,
-  Platform,
 } from 'react-native';
 import {
   getHabits,
@@ -18,7 +17,7 @@ import {
   updateHabit,
   deleteHabit,
   incrementStreak,
-} from '../services/habitService';
+} from '../src/api/habitService';
 import { ViewAllButton } from './molecules';
 import { FONTS } from '../config/fonts';
 
@@ -28,11 +27,6 @@ export default function HabitTracker() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [editingId, setEditingId] = useState(null);
-
-  // Load habits on component mount
-  useEffect(() => {
-    loadHabits();
-  }, []);
 
   const loadHabits = async () => {
     setLoading(true);
@@ -46,13 +40,19 @@ export default function HabitTracker() {
     setLoading(false);
   };
 
+  useEffect(() => {
+    // Load data on mount; async setState in loadHabits is intentional
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch-on-mount pattern
+    loadHabits();
+  }, []);
+
   const handleCreate = async () => {
     if (!name.trim()) {
       Alert.alert('Error', 'Please enter a habit name');
       return;
     }
 
-    const { data, error } = await createHabit({ name, description });
+    const { error } = await createHabit({ name, description });
     if (error) {
       Alert.alert('Error', 'Failed to create habit');
       console.error(error);

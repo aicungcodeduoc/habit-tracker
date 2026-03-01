@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, Image } from 'react-native';
+import { StyleSheet, Image } from 'react-native';
 
 /**
  * OnboardingImage - A reusable component for onboarding step images

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -14,7 +14,7 @@ import { BlurView } from 'expo-blur';
 import { COLORS } from '../../config/colors';
 import { FONTS } from '../../config/fonts';
 import Svg, { Circle } from 'react-native-svg';
-import { analyzeImageWithGemini } from '../../services/geminiService';
+import { analyzeImageWithGemini } from '../../src/api/geminiService';
 
 const { width } = Dimensions.get('window');
 
@@ -25,10 +25,10 @@ export default function AIProcessScreen({ route, navigation }) {
   const habit = route?.params?.habit || { title: '' };
   const [analysisResult, setAnalysisResult] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(true);
-  const progressAnim = useRef(new Animated.Value(0)).current;
-  const pulseAnim = useRef(new Animated.Value(1)).current;
-  const containerAnim = useRef(new Animated.Value(0)).current;
-  const rotateAnim = useRef(new Animated.Value(0)).current;
+  const [progressAnim] = useState(() => new Animated.Value(0));
+  const [pulseAnim] = useState(() => new Animated.Value(1));
+  const [containerAnim] = useState(() => new Animated.Value(0));
+  const [rotateAnim] = useState(() => new Animated.Value(0));
 
   useEffect(() => {
     // Container entrance animation
@@ -130,6 +130,7 @@ export default function AIProcessScreen({ route, navigation }) {
     };
 
     performAnalysis();
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- run on imageUri/habit change only; anim refs stable
   }, [imageUri, habit.title]);
 
   const radius = 60;

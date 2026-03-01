@@ -1,15 +1,14 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { View, StyleSheet, SafeAreaView, Text, TouchableOpacity, ScrollView, Animated, ActivityIndicator } from 'react-native';
-import { ChevronRight, Home, Briefcase, TreePine, Dumbbell, Coffee, MapPin, Check, BookOpen, Calendar, Star, Sparkles } from 'lucide-react-native';
-import * as Haptics from 'expo-haptics';
+import React, { useEffect, useState } from 'react';
+import { View, StyleSheet, SafeAreaView, Text, TouchableOpacity, ScrollView, Animated } from 'react-native';
+import { ChevronRight, Home, Briefcase, TreePine, Dumbbell, Coffee, MapPin, Check, BookOpen, Calendar, Sparkles } from 'lucide-react-native';
 import { COLORS } from '../../config/colors';
 import { FONTS } from '../../config/fonts';
-// import { generateHabitCompliment } from '../../services/geminiService';
+// import { generateHabitCompliment } from '../../src/api/geminiService';
 
 export default function HabitCreatedScreen({ navigation, route }) {
-  const scaleAnim = useRef(new Animated.Value(1)).current;
-  const pulseAnim = useRef(new Animated.Value(0)).current;
-  const rotateAnim = useRef(new Animated.Value(0)).current;
+  const [scaleAnim] = useState(() => new Animated.Value(1));
+  const [pulseAnim] = useState(() => new Animated.Value(0));
+  const [rotateAnim] = useState(() => new Animated.Value(0));
 
   const { habitData, savedHabit } = route.params || {};
   
@@ -97,6 +96,7 @@ export default function HabitCreatedScreen({ navigation, route }) {
         useNativeDriver: true,
       })
     ).start();
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount; anim refs stable
   }, []);
 
   const pulseOpacity = pulseAnim.interpolate({
