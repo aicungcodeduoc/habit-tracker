@@ -1,0 +1,27 @@
+---
+description: Database changes, migrations, and type generation
+globs: "**/supabase/**/*.sql,**/supabase/**/*.ts,database/**/*.sql,docs/database-schema.md"
+alwaysApply: false
+---
+
+# Database & migrations
+
+Quy trình sync khi có người đổi schema (ai đổi làm gì, người khác pull thế nào): xem **database-sync.mdc**.
+
+## Changing the database
+1. **Add a new migration** in `supabase/migrations/` with timestamp + descriptive name (e.g. `20260301120000_add_habit_notes.sql`).
+2. **Apply** via Supabase Dashboard or `supabase db push`.
+3. **Regenerate types**: `npm run gen:types` (or the command in `supabase/types.ts` header). Commit updated `supabase/types.ts`.
+4. **Update** `docs/database-schema.md` if tables or relationships change.
+
+## Rules
+- **Do not edit `supabase/types.ts` by hand** — it is generated from the DB.
+- SQL SSOT is **`supabase/migrations/`**. The `database/` folder is reference only (01_tables, 02_indexes, etc.).
+- All tables must have **RLS enabled** and policies scoped to `auth.uid()` (or equivalent). Document in `docs/database-schema.md`.
+
+## Example migration
+```sql
+-- supabase/migrations/20260301120000_add_habit_notes.sql
+ALTER TABLE habits ADD COLUMN IF NOT EXISTS notes TEXT;
+COMMENT ON COLUMN habits.notes IS 'Optional user notes for the habit';
+```

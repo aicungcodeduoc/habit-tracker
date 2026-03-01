@@ -1,0 +1,34 @@
+---
+description: Supabase client, env, queries, and API layer
+globs: "**/api/**/*.js,**/src/api/**/*.js,config/supabase.js"
+alwaysApply: false
+---
+
+# Supabase & API layer
+
+## Environment & client
+- **Never commit** API keys or secrets. Use `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY` (e.g. in `.env`).
+- Supabase client lives in **`src/api/supabase.js`**. Initialize once and import from `src/api` elsewhere.
+- Use **anon key** only in the app. Never use service role key in client code.
+
+## Queries & errors
+- **Select only needed columns** (e.g. `.select('id, title, frequency')`), not `select('*')` for large tables.
+- **Filter in the DB** with `.eq()`, `.gte()`, etc.; avoid filtering large result sets in JS.
+- **Always handle errors**: check `error` on responses and surface user-friendly messages; log without sensitive data.
+
+```javascript
+// ✅ Check errors and use typed response
+const { data, error } = await supabase.from('habits').select('id, title').eq('user_id', userId);
+if (error) {
+  console.warn('Habits fetch failed', error.message);
+  return { data: null, error };
+}
+return { data, error: null };
+```
+
+## Security
+- RLS must be enabled on all tables. Policies should restrict to `auth.uid() = user_id` (or equivalent).
+- Use **AsyncStorage** for auth persistence (already configured in client).
+
+## Code organization
+- Keep **one service per domain** in `src/api/` (e.g. habitService, completionService). Export from `src/api/index.js`.

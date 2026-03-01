@@ -1,0 +1,28 @@
+---
+description: Code style chung — naming, file, comment (đồng bộ giữa các dev)
+alwaysApply: true
+---
+
+# Code style (đồng bộ giữa dev)
+
+## Đặt tên
+- **Component / screen**: PascalCase (`HabitItem.js`, `HomeScreen.js`).
+- **Hook**: camelCase, bắt đầu `use` (`useStepAnimation.js`).
+- **Service / util**: camelCase (`habitService.js`, `completionService.js`).
+- **Hằng (theme)**: UPPER_SNAKE hoặc object (ví dụ `COLORS.primary`, `FONTS.anton`).
+
+## File
+- Một component chính mỗi file; export default cho screen, named export cho component dùng chung.
+- Style đặt cuối file với `StyleSheet.create`; dùng `COLORS` và `FONTS` từ `src/utils`.
+
+## Comment & JSDoc
+- Comment bằng tiếng Việt hoặc tiếng Anh tùy team; giữ nhất quán trong từng file.
+- Hàm phức tạp hoặc API public: thêm mô tả ngắn (JSDoc nếu có) để người khác đọc dễ.
+
+## React Native / component
+- Dùng functional component; logic tái dùng đưa vào hook hoặc util.
+- Props: destructure ở đầu component; default value cho prop optional.
+
+## Lỗi & log
+- Luôn xử lý lỗi từ Supabase/API; không để `catch` trống.
+- Không log dữ liệu nhạy cảm (token, password, PII).

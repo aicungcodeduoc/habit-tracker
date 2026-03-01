@@ -1,0 +1,31 @@
+---
+description: Atomic Design — atoms, molecules, organisms
+globs: "**/components/**/*.js,**/src/components/**/*.js"
+alwaysApply: false
+---
+
+# Atomic Design (components)
+
+## Hierarchy
+- **Atoms** — Smallest building blocks (Button, AIIcon, inputs). No business logic; props for appearance/behavior.
+- **Molecules** — Combinations of atoms (DateHeader, WeekOverview, HabitItem, OnboardingHeading). Minimal state.
+- **Organisms** — Sections (BottomTabNavigator, HabitScreenHeader). Can hold more state and logic.
+
+## Rules
+- **Atoms**: Self-contained, highly reusable. Single responsibility.
+- **Molecules**: Import atoms from `../atoms` or `../components`; use `../utils` for COLORS/FONTS.
+- **Organisms**: Import molecules/atoms from `../components` or relative paths within `src/components/`.
+- **No direct imports** from `config/` or `services/`; use `../api` and `../utils` when inside `src/`.
+
+## Naming & files
+- **PascalCase** for components and file names: `HabitItem.js`, `WeekOverview.js`.
+- **Named exports** preferred. Use `index.js` in atoms/molecules/organisms for re-exports.
+
+## Styling
+- Use **StyleSheet.create** at the bottom of the file. Use shared **COLORS** and **FONTS** from `../utils` (or `src/utils`).
+
+```javascript
+// ✅ Molecule importing from src
+import { COLORS, FONTS } from '../utils';
+import { Button } from '../components';
+```

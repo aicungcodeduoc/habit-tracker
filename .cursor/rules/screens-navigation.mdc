@@ -1,0 +1,28 @@
+---
+description: Screens and navigation patterns
+globs: "**/screens/**/*.js,**/src/screens/**/*.js,**/navigation/**/*.js,**/src/navigation/**/*.js,App.js"
+alwaysApply: false
+---
+
+# Screens & navigation
+
+## Screens
+- Screens live in **`src/screens/`**. Each file exports a default screen component.
+- Import **api** (habitService, completionService, supabase), **utils** (COLORS, FONTS), and **components** from `src/`:
+
+```javascript
+// ✅ Inside src/screens/HomeScreen.js
+import { DateHeader, WeekOverview, HabitItem } from '../components';
+import { COLORS, FONTS } from '../utils';
+import { getHabits, getCompletionsForDateRange } from '../api';
+```
+
+- Use **useFocusEffect** when screen must refetch data on tab/focus. Handle loading and errors in UI.
+
+## Navigation
+- **Root navigator** in `src/navigation/RootNavigator.js`. Import screens from `../screens` (or `src/screens`).
+- **Bottom tabs** in `src/components/organisms/BottomTabNavigator.js`; import screens from `../../screens`.
+- Keep route names and params consistent (e.g. `HabitDetail` with `habit` param).
+
+## App entry
+- **App.js** imports `RootNavigator` from `./src/navigation` and `supabase` from `./src/api`. New app-level code should use `src/` imports.

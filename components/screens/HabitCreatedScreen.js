@@ -1,16 +1,61 @@
-import React, { useEffect, useRef } from 'react';
-import { View, StyleSheet, SafeAreaView, Text, TouchableOpacity, ScrollView, Animated } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, StyleSheet, SafeAreaView, Text, TouchableOpacity, ScrollView, Animated, ActivityIndicator } from 'react-native';
 import { ChevronRight, Home, Briefcase, TreePine, Dumbbell, Coffee, MapPin, Check, BookOpen, Calendar, Star, Sparkles } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { COLORS } from '../../config/colors';
 import { FONTS } from '../../config/fonts';
+// import { generateHabitCompliment } from '../../services/geminiService';
 
 export default function HabitCreatedScreen({ navigation, route }) {
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const pulseAnim = useRef(new Animated.Value(0)).current;
   const rotateAnim = useRef(new Animated.Value(0)).current;
 
-  const { habitData } = route.params || {};
+  const { habitData, savedHabit } = route.params || {};
+  
+  // Use savedHabit if available, otherwise use habitData
+  const displayData = savedHabit || habitData;
+
+  // State for AI-generated compliment (commented out)
+  // const [aiCompliment, setAiCompliment] = useState(null);
+  // const [isLoadingCompliment, setIsLoadingCompliment] = useState(true);
+  // const [complimentError, setComplimentError] = useState(null);
+
+  // Generate AI compliment on mount (commented out)
+  // useEffect(() => {
+  //   const generateCompliment = async () => {
+  //     if (!displayData) {
+  //       setIsLoadingCompliment(false);
+  //       return;
+  //     }
+
+  //     try {
+  //       setIsLoadingCompliment(true);
+  //       setComplimentError(null);
+        
+  //       const result = await generateHabitCompliment({
+  //         habitName: displayData.habitName || displayData.title || 'this habit',
+  //         frequency: displayData.frequency || 'daily',
+  //         environment: displayData.environment || 'anywhere',
+  //         reminderTime: displayData.reminderTime || displayData.selectedTime || new Date(),
+  //         selectedDays: displayData.selectedDays || [],
+  //       });
+
+  //       if (result.success && result.data) {
+  //         setAiCompliment(result.data);
+  //       } else {
+  //         setComplimentError(result.error || 'Failed to generate compliment');
+  //       }
+  //     } catch (error) {
+  //       console.error('Error generating compliment:', error);
+  //       setComplimentError(error.message || 'Failed to generate compliment');
+  //     } finally {
+  //       setIsLoadingCompliment(false);
+  //     }
+  //   };
+
+  //   generateCompliment();
+  // }, [displayData]);
 
   // Animation for checkmark circle
   useEffect(() => {
@@ -81,9 +126,10 @@ export default function HabitCreatedScreen({ navigation, route }) {
   };
 
   const formatSchedule = () => {
-    if (!habitData) return 'daily, at 8:30 pm';
+    if (!displayData) return 'daily, at 8:30 pm';
     
-    const { frequency, selectedTime, selectedDays } = habitData;
+    const { frequency, selectedTime, reminderTime, selectedDays } = displayData;
+    const timeToUse = selectedTime || reminderTime;
     const daysOfWeek = [
       { label: 'Monday', value: 1 },
       { label: 'Tuesday', value: 2 },
@@ -95,7 +141,7 @@ export default function HabitCreatedScreen({ navigation, route }) {
     ];
 
     if (frequency === 'daily') {
-      return `daily, at ${formatTime(selectedTime)}`;
+      return `daily, at ${formatTime(timeToUse)}`;
     } else {
       if (selectedDays && selectedDays.length > 0) {
         const dayLabels = selectedDays.map(dayValue => {
@@ -104,19 +150,19 @@ export default function HabitCreatedScreen({ navigation, route }) {
         }).filter(Boolean);
         
         if (dayLabels.length === 1) {
-          return `${dayLabels[0]}, at ${formatTime(selectedTime)}`;
+          return `${dayLabels[0]}, at ${formatTime(timeToUse)}`;
         } else if (dayLabels.length <= 3) {
-          return `${dayLabels.join(', ')}, at ${formatTime(selectedTime)}`;
+          return `${dayLabels.join(', ')}, at ${formatTime(timeToUse)}`;
         } else {
-          return `weekly (${dayLabels.length} days), at ${formatTime(selectedTime)}`;
+          return `weekly (${dayLabels.length} days), at ${formatTime(timeToUse)}`;
         }
       }
-      return `weekly, at ${formatTime(selectedTime)}`;
+      return `weekly, at ${formatTime(timeToUse)}`;
     }
   };
 
   const formatLocation = () => {
-    if (!habitData) return 'My Home';
+    if (!displayData) return 'My Home';
     
     const environments = [
       { id: 'home', label: 'Home' },
@@ -127,7 +173,7 @@ export default function HabitCreatedScreen({ navigation, route }) {
       { id: 'anywhere', label: 'Anywhere' },
     ];
 
-    const env = environments.find(e => e.id === (habitData.environment || 'home'));
+    const env = environments.find(e => e.id === (displayData.environment || 'home'));
     if (!env) return 'My Home';
     
     if (env.id === 'home') {
@@ -137,7 +183,7 @@ export default function HabitCreatedScreen({ navigation, route }) {
   };
 
   const getEnvironmentIcon = () => {
-    if (!habitData) return Home;
+    if (!displayData) return Home;
     
     const environments = [
       { id: 'home', icon: Home },
@@ -148,18 +194,19 @@ export default function HabitCreatedScreen({ navigation, route }) {
       { id: 'anywhere', icon: MapPin },
     ];
 
-    const env = environments.find(e => e.id === (habitData.environment || 'home'));
+    const env = environments.find(e => e.id === (displayData.environment || 'home'));
     return env ? env.icon : Home;
   };
 
   const handleStartSmall = () => {
     // Navigate to home screen (Main stack with Home tab)
-    navigation.navigate('Main');
+    // This will trigger a refresh of the habits list
+    navigation.navigate('Main', { screen: 'Home' });
   };
 
-  const habitName = habitData?.habitName || 'New habit';
-  const frequency = habitData?.frequency || 'daily';
-  const selectedTime = habitData?.reminderTime || new Date();
+  const habitName = displayData?.habitName || displayData?.title || 'New habit';
+  const frequency = displayData?.frequency || 'daily';
+  const selectedTime = displayData?.reminderTime || displayData?.selectedTime || new Date();
 
   return (
     <SafeAreaView style={styles.container}>
@@ -258,9 +305,21 @@ export default function HabitCreatedScreen({ navigation, route }) {
                   <Sparkles size={20} color={COLORS.primary} strokeWidth={2} fill={COLORS.primary} />
                 </View>
                 <View style={styles.messageTextContainer}>
-                  <Text style={styles.motivationalText}>
-                    You will <Text style={styles.motivationalHighlight}>{habitName}</Text> at <Text style={styles.motivationalHighlight}>{formatTime(selectedTime)}</Text> {frequency === 'daily' ? 'daily' : 'weekly'} in <Text style={styles.motivationalHighlight}>{formatLocation().toLowerCase()}</Text>.
-                  </Text>
+                  {/* AI-generated compliment (commented out) */}
+                  {/* {isLoadingCompliment ? (
+                    <View style={styles.loadingComplimentContainer}>
+                      <ActivityIndicator size="small" color={COLORS.primary} />
+                      <Text style={styles.motivationalText}>Generating your personalized message...</Text>
+                    </View>
+                  ) : aiCompliment ? (
+                    <Text style={styles.motivationalText}>
+                      {aiCompliment}
+                    </Text>
+                  ) : ( */}
+                    <Text style={styles.motivationalText}>
+                      You will <Text style={styles.motivationalHighlight}>{habitName}</Text> at <Text style={styles.motivationalHighlight}>{formatTime(selectedTime)}</Text> {frequency === 'daily' ? 'daily' : 'weekly'} in <Text style={styles.motivationalHighlight}>{formatLocation().toLowerCase()}</Text>.
+                    </Text>
+                  {/* )} */}
                 </View>
               </View>
               
@@ -454,6 +513,11 @@ const styles = StyleSheet.create({
   motivationalHighlight: {
     color: COLORS.primary,
     fontWeight: '600',
+  },
+  loadingComplimentContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   noteContainer: {
     marginTop: 8,

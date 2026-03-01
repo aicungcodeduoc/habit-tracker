@@ -15,6 +15,8 @@ export { default as LoginScreen } from './LoginScreen';
 export { default as OnboardingScreen } from './OnboardingScreen';
 export { default as HabitDetailScreen } from './HabitDetailScreen';
 export { default as AIProcessScreen } from './AIProcessScreen';
+export { default as AIResultScreen } from './AIResultScreen';
+export { default as HabitSuccessScreen } from './HabitSuccessScreen';
 export { default as AddHabitScreen } from './AddHabitScreen';
 export { default as HowOftenScreen } from './HowOftenScreen';
 export { default as HabitCreatedScreen } from './HabitCreatedScreen';
