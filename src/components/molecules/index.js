@@ -11,3 +11,5 @@ export { TypingText } from './TypingText';
 export { DateHeader } from './DateHeader';
 export { WeekOverview } from './WeekOverview';
 export { HabitItem } from './HabitItem';
+export { MessageBubble, ErrorBubble, TypingBubble } from './MessageBubble';
+export { ChatInput } from './ChatInput';

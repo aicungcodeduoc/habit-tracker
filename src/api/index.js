@@ -7,3 +7,5 @@ export * from './habitService';
 export * from './completionService';
 export * from './onboardingService';
 export * from './geminiService';
+export * from './buddyService';
+export * from './buddyActions';
