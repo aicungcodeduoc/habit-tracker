@@ -1,13 +1,14 @@
 /**
- * Gemini API Service - Handles image analysis using Google Gemini API.
+ * Gemini API Service - Handles image analysis and AI Buddy chat using Google Gemini API.
  * Requires EXPO_PUBLIC_GEMINI_API_KEY in .env (get key from Google AI Studio).
  */
 
 import * as FileSystem from 'expo-file-system/legacy';
 
-const GEMINI_MODEL = 'gemini-3-flash-preview';
+const GEMINI_MODEL_VISION = 'gemini-3-flash-preview'; // Image analysis (supports vision)
+const GEMINI_MODEL_TEXT = 'gemini-3-flash-preview'; // Text chat
 
-function getGeminiApiUrl() {
+function getGeminiApiKey() {
   const key = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
   if (!key || String(key).trim() === '') {
     if (typeof __DEV__ !== 'undefined' && __DEV__) {
@@ -21,7 +22,13 @@ function getGeminiApiUrl() {
     }
     return null;
   }
-  return `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${key}`;
+  return key;
+}
+
+function getGeminiApiUrl(model = GEMINI_MODEL_VISION) {
+  const key = getGeminiApiKey();
+  if (!key) return null;
+  return `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
 }
 
 const convertImageToBase64 = async (imageUri) => {
@@ -94,7 +101,7 @@ The message should be conversational and encouraging, like an AI buddy talking t
         throw new Error('Invalid API key. Please check your Gemini API key.');
       }
       if (errorMessage.toLowerCase().includes('model') && errorMessage.toLowerCase().includes('not found')) {
-        throw new Error(`Model not found: ${GEMINI_MODEL}. Please check the model name.`);
+        throw new Error(`Model not found: ${GEMINI_MODEL_VISION}. Please check the model name.`);
       }
       throw new Error(errorMessage);
     }
@@ -175,7 +182,7 @@ Example style: "Starting your journey with [habit] is a beautiful commitment to 
 
 Generate ONLY the compliment message text, nothing else.`;
 
-    const apiUrl = getGeminiApiUrl();
+    const apiUrl = getGeminiApiUrl(GEMINI_MODEL_TEXT);
     if (!apiUrl) throw new Error('EXPO_PUBLIC_GEMINI_API_KEY is not set in .env.');
     const payload = {
       contents: [{ parts: [{ text: promptText }] }]
@@ -204,5 +211,137 @@ Generate ONLY the compliment message text, nothing else.`;
   } catch (error) {
     console.error('Error generating habit compliment:', error);
     return { success: false, error: error.message || 'Failed to generate compliment' };
+  }
+};
+
+/**
+ * Send a message to AI Buddy with conversation history and habit context.
+ * Supports Gemini Function Calling — Buddy can perform actions in the app.
+ */
+export const sendBuddyMessage = async (userMessage, conversationHistory = [], habitContext = {}) => {
+  // Lazy import to avoid circular dependency
+  const { BUDDY_FUNCTION_DECLARATIONS, executeBuddyAction } = require('./buddyActions');
+
+  try {
+    const apiUrl = getGeminiApiUrl(GEMINI_MODEL_TEXT);
+    if (!apiUrl) throw new Error('EXPO_PUBLIC_GEMINI_API_KEY is not set in .env.');
+
+    const systemPrompt = `Bạn là Buddy, một người bạn AI thân thiện trong ứng dụng xây dựng thói quen "small".
+
+Quy tắc:
+- Giao tiếp bằng tiếng Việt tự nhiên, gần gũi
+- Trả lời ngắn gọn (2-4 câu), không dài dòng
+- Dùng 1-2 emoji mỗi tin nhắn
+- Gọi người dùng là "bạn"
+- Động viên nhưng thực tế, không "toxic positivity"
+- Khi được hỏi về thói quen, dựa trên dữ liệu thực tế bên dưới
+- Không bao giờ nói bạn là AI hay chatbot, hãy xưng là "mình" hoặc "Buddy"
+
+Khả năng hành động:
+- Bạn có thể thực hiện hành động trong app thay người dùng (tạo/xoá thói quen, đánh dấu hoàn thành, xem danh sách)
+- Khi người dùng yêu cầu tạo thói quen, hãy dùng function create_habit
+- Khi người dùng yêu cầu xoá thói quen, PHẢI hỏi xác nhận trước (VD: "Bạn có chắc muốn xoá thói quen X không?"). CHỈ gọi delete_habit sau khi người dùng đồng ý
+- Khi người dùng muốn đánh dấu hoàn thành, dùng toggle_completion
+- Sau khi thực hiện action, hãy tổng hợp kết quả một cách tự nhiên cho người dùng
+
+Dữ liệu thói quen hiện tại của người dùng:
+${JSON.stringify(habitContext, null, 2)}`;
+
+    // Build multi-turn contents from conversation history
+    const contents = [];
+    for (const msg of conversationHistory) {
+      contents.push({
+        role: msg.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: msg.content }],
+      });
+    }
+    // Add the new user message
+    contents.push({
+      role: 'user',
+      parts: [{ text: userMessage }],
+    });
+
+    const payload = {
+      systemInstruction: {
+        parts: [{ text: systemPrompt }],
+      },
+      contents,
+      tools: [{
+        functionDeclarations: BUDDY_FUNCTION_DECLARATIONS,
+      }],
+    };
+
+    // Call Gemini and handle function calling loop (max 3 rounds to prevent infinite loops)
+    let actionsPerformed = [];
+    for (let round = 0; round < 3; round++) {
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.error?.message || `API request failed with status ${response.status}`;
+        if (response.status === 429) {
+          throw new Error('Buddy đang bận, bạn thử lại sau nhé!');
+        }
+        if (response.status === 401) {
+          throw new Error('API key không hợp lệ.');
+        }
+        throw new Error(errorMessage);
+      }
+
+      const data = await response.json();
+      const candidate = data.candidates?.[0];
+      const parts = candidate?.content?.parts || [];
+
+      // Check if model wants to call a function
+      const functionCallPart = parts.find(p => p.functionCall);
+
+      if (!functionCallPart) {
+        // No function call — extract text response
+        const textResponse = parts.map(p => p.text).filter(Boolean).join('').trim();
+        // If we have actions but empty text, use the last action's message as fallback
+        if (!textResponse && actionsPerformed.length > 0) {
+          const lastAction = actionsPerformed[actionsPerformed.length - 1];
+          return { success: true, data: lastAction.result?.message || 'Buddy đã thực hiện xong.', actions: actionsPerformed };
+        }
+        if (!textResponse) throw new Error('Empty response from Buddy');
+        return { success: true, data: textResponse, actions: actionsPerformed };
+      }
+
+      // Execute the function call
+      const { name, args } = functionCallPart.functionCall;
+      const actionResult = await executeBuddyAction(name, args || {});
+      actionsPerformed.push({ name, args, result: actionResult });
+
+      // Add model's original response (preserving thought_signature) and our function result
+      payload.contents.push({
+        role: 'model',
+        parts: parts,
+      });
+      payload.contents.push({
+        role: 'user',
+        parts: [{
+          functionResponse: {
+            name,
+            response: actionResult,
+          },
+        }],
+      });
+      // Continue loop — Gemini will now generate a text response using the function result
+    }
+
+    // If we exhausted rounds, return last action result as text
+    const lastAction = actionsPerformed[actionsPerformed.length - 1];
+    return {
+      success: true,
+      data: lastAction?.result?.message || 'Buddy đã thực hiện xong.',
+      actions: actionsPerformed,
+    };
+  } catch (error) {
+    console.error('Error sending buddy message:', error);
+    return { success: false, error: error.message || 'Buddy đang gặp sự cố, bạn thử lại nhé!' };
   }
 };
