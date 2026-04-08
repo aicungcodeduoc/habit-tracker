@@ -9,6 +9,7 @@ import { BottomTabNavigator } from '../components';
 import {
   LoginScreen,
   SettingsScreen,
+  ProfileScreen,
   OnboardingScreen,
   AddHabitScreen,
   HowOftenScreen,
@@ -31,6 +32,7 @@ export default function RootNavigator({ initialRouteName = 'Login' }) {
       <Stack.Screen name="Onboarding" component={OnboardingScreen} />
       <Stack.Screen name="Main" component={BottomTabNavigator} />
       <Stack.Screen name="Settings" component={SettingsScreen} />
+      <Stack.Screen name="Profile" component={ProfileScreen} />
       <Stack.Screen name="HabitDetail" component={HabitDetailScreen} />
       <Stack.Screen name="AIProcess" component={AIProcessScreen} />
       <Stack.Screen name="AIResult" component={AIResultScreen} />

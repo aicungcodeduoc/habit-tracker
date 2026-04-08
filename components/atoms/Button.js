@@ -1,5 +1,5 @@
 import React from 'react';
-import { TouchableOpacity, Text, StyleSheet } from 'react-native';
+import { TouchableOpacity, Text, StyleSheet, View } from 'react-native';
 import { FONTS } from '../../config/fonts';
 
 /**
@@ -14,6 +14,8 @@ import { FONTS } from '../../config/fonts';
  * @param {Object} props.style - Additional styles for the button container
  * @param {Object} props.textStyle - Additional styles for the text
  * @param {boolean} props.fullWidth - Whether the button should take full width (default: true)
+ * @param {React.ReactNode} props.icon - Icon to display
+ * @param {string} props.iconPosition - Position of the icon: 'left' | 'right' (default: 'left')
  * @returns {JSX.Element} Button component
  */
 export const Button = ({
@@ -25,6 +27,8 @@ export const Button = ({
   style,
   textStyle,
   fullWidth = true,
+  icon,
+  iconPosition = 'left',
 }) => {
   // Determine which styles to apply based on variant and state
   const getButtonStyle = () => {
@@ -102,9 +106,13 @@ export const Button = ({
       disabled={disabled}
       activeOpacity={0.7}
     >
-      <Text style={[...getTextStyle(), textStyle]}>
-        {title}
-      </Text>
+      <View style={[styles.contentContainer, iconPosition === 'right' && styles.contentContainerReverse]}>
+        {icon && iconPosition === 'left' && <View style={styles.iconLeft}>{icon}</View>}
+        <Text style={[...getTextStyle(), textStyle]}>
+          {title}
+        </Text>
+        {icon && iconPosition === 'right' && <View style={styles.iconRight}>{icon}</View>}
+      </View>
     </TouchableOpacity>
   );
 };
@@ -114,9 +122,21 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 20,
     borderRadius: 50, // Pill-like shape with very rounded corners
+    minHeight: 48,
+  },
+  contentContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 48,
+  },
+  contentContainerReverse: {
+    flexDirection: 'row-reverse',
+  },
+  iconLeft: {
+    marginRight: 8,
+  },
+  iconRight: {
+    marginLeft: 8,
   },
   fullWidth: {
     width: '100%',

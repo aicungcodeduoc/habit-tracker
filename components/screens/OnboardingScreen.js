@@ -943,6 +943,7 @@ export default function OnboardingScreen() {
             >
               <Text style={[styles.backText, currentStep === 0 && styles.backTextDisabled]}>&lt; back</Text>
             </TouchableOpacity>
+            
             <View style={styles.progressContainer}>
               {Array.from({ length: totalSteps }).map((_, index) => (
                 <View
@@ -1037,6 +1038,11 @@ const styles = StyleSheet.create({
   },
   progressStepActive: {
     backgroundColor: '#01C459',
+  },
+  topBarLogo: {
+    width: 40,
+    height: 40,
+    borderRadius: 4,
   },
   stepContainer: {
     flex: 1,

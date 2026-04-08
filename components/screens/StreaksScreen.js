@@ -9,7 +9,7 @@ import {
   Image
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { Upload } from 'lucide-react-native';
+// import { Upload } from 'lucide-react-native';
 import { COLORS } from '../../config/colors';
 import { FONTS } from '../../config/fonts';
 import { getCategories, getHabitsByCategory, getHabits, getCategoryCompletionsWithImages, getAllCategoryCompletions } from '../../src/api/habitService';
@@ -444,10 +444,10 @@ export default function StreaksScreen() {
         </View>
 
         {/* Share Button */}
-        <TouchableOpacity style={styles.shareButton} activeOpacity={0.7}>
+        {/* <TouchableOpacity style={styles.shareButton} activeOpacity={0.7}>
           <Text style={styles.shareButtonText}>SHARE</Text>
           <Upload size={18} color={COLORS.primary} strokeWidth={2} />
-        </TouchableOpacity>
+        </TouchableOpacity> */}
       </ScrollView>
     </SafeAreaView>
   );

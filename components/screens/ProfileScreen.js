@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, SafeAreaView, Text, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import { View, StyleSheet, SafeAreaView, Text, TouchableOpacity, ScrollView, Alert, Image } from 'react-native';
 import { useNavigation, CommonActions } from '@react-navigation/native';
 import { 
   UserCircle, 
@@ -97,6 +97,11 @@ export default function ProfileScreen() {
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
+          <Image 
+            source={require('../../assets/logo/logo.png')}
+            style={styles.headerLogo}
+            resizeMode="contain"
+          />
           <Text style={styles.title}>profile</Text>
         </View>
         
@@ -151,6 +156,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 20,
     paddingBottom: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  headerLogo: {
+    width: 32,
+    height: 32,
+    borderRadius: 4,
   },
   title: {
     fontSize: 36,
