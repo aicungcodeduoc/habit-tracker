@@ -2,14 +2,11 @@ import React from 'react';
 import { View, StyleSheet, SafeAreaView, Text, TouchableOpacity, ScrollView, Alert, Image } from 'react-native';
 import { useNavigation, CommonActions } from '@react-navigation/native';
 import { 
-  UserCircle, 
-  Settings, 
-  LogOut, 
-  Heart, 
   Star, 
-  MessageSquare,
+  LogOut, 
   ChevronRight 
 } from 'lucide-react-native';
+import * as StoreReview from 'expo-store-review';
 import { FONTS } from '../../config/fonts';
 import { supabase } from '../../config/supabase';
 
@@ -17,11 +14,7 @@ export default function ProfileScreen() {
   const navigation = useNavigation();
   
   const menuItems = [
-    { id: 'account', title: 'My Account', icon: UserCircle },
-    { id: 'settings', title: 'Setting', icon: Settings },
-    { id: 'donate', title: 'Donate us', icon: Heart },
     { id: 'rate', title: 'Rate us', icon: Star },
-    { id: 'feedback', title: 'Feedback', icon: MessageSquare },
     { id: 'signout', title: 'Sign out', icon: LogOut, isDestructive: true },
   ];
 
@@ -64,14 +57,22 @@ export default function ProfileScreen() {
     // Handle menu item press
     console.log(`Pressed: ${id}`);
     
-    if (id === 'settings') {
-      // Navigate to Settings screen
-      const parent = navigation.getParent();
-      if (parent) {
-        parent.navigate('Settings');
-      } else {
-        navigation.navigate('Settings');
-      }
+    if (id === 'rate') {
+      // Handle native rating modal
+      const handleRate = async () => {
+        try {
+          const isAvailable = await StoreReview.isAvailableAsync();
+          if (isAvailable) {
+            await StoreReview.requestReview();
+          } else {
+            // Fallback for environments where StoreReview is not available (like some simulators)
+            Alert.alert('Rate Us', 'Native rating is only available on real devices.');
+          }
+        } catch (error) {
+          console.error('Error with rating:', error);
+        }
+      };
+      handleRate();
     } else if (id === 'signout') {
       // Show confirmation alert before signing out
       Alert.alert(
@@ -97,11 +98,6 @@ export default function ProfileScreen() {
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
-          <Image 
-            source={require('../../assets/logo/logo.png')}
-            style={styles.headerLogo}
-            resizeMode="contain"
-          />
           <Text style={styles.title}>profile</Text>
         </View>
         
@@ -150,7 +146,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 20,
+    paddingBottom: 120,
   },
   header: {
     paddingHorizontal: 20,

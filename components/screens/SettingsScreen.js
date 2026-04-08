@@ -35,7 +35,7 @@ export default function SettingsScreen() {
   };
 
   const handleGoToProfile = () => {
-    navigation.navigate('Profile');
+    navigation.navigate('Main', { screen: 'Profile' });
   };
 
   return (

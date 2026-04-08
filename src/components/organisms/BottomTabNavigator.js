@@ -6,12 +6,14 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { 
   Home, 
   Flame,
+  User,
 } from 'lucide-react-native';
 import { AIIcon } from '../atoms';
 import { 
   HomeScreen, 
   BuddyScreen, 
   StreaksScreen,
+  ProfileScreen,
 } from '../../screens';
 import { COLORS } from '../../utils';
 
@@ -175,6 +177,8 @@ function CustomTabBar({ state, descriptors, navigation }) {
             IconComponent = AIIcon;
           } else if (route.name === 'Streaks') {
             IconComponent = Flame;
+          } else if (route.name === 'Profile') {
+            IconComponent = User;
           }
 
           return (
@@ -234,6 +238,10 @@ const BottomTabNavigator = () => {
       <Tab.Screen
         name="Buddy"
         component={BuddyScreen}
+      />
+      <Tab.Screen
+        name="Profile"
+        component={ProfileScreen}
       />
     </Tab.Navigator>
   );
