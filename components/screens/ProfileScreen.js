@@ -1,55 +1,148 @@
-import React from 'react';
-import { View, StyleSheet, SafeAreaView, Text, TouchableOpacity, ScrollView, Alert, Image } from 'react-native';
-import { useNavigation, CommonActions } from '@react-navigation/native';
-import { 
-  Star, 
-  LogOut, 
-  ChevronRight 
+import React, { useState, useCallback } from 'react';
+import {
+  View,
+  StyleSheet,
+  SafeAreaView,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  Alert,
+  ActivityIndicator,
+  Switch,
+  Linking,
+} from 'react-native';
+import { useNavigation, CommonActions, useFocusEffect } from '@react-navigation/native';
+import * as Notifications from 'expo-notifications';
+import {
+  Star,
+  LogOut,
+  ChevronRight,
+  Trash2,
+  Bell,
 } from 'lucide-react-native';
-import * as StoreReview from 'expo-store-review';
 import { FONTS } from '../../config/fonts';
 import { supabase } from '../../config/supabase';
+import { deleteCurrentUserAccount } from '../../src/api/accountService';
+import { getOnboardingData, saveOnboardingData } from '../../src/api/onboardingService';
 
 export default function ProfileScreen() {
   const navigation = useNavigation();
-  
+  const [deletingAccount, setDeletingAccount] = useState(false);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [notificationSwitchBusy, setNotificationSwitchBusy] = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      (async () => {
+        const { data } = await getOnboardingData();
+        if (!cancelled) {
+          setNotificationsEnabled(data?.notificationsEnabled === true);
+        }
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }, [])
+  );
+
+  const handleNotificationToggle = async (enabled) => {
+    if (notificationSwitchBusy || deletingAccount) return;
+    setNotificationSwitchBusy(true);
+    try {
+      if (enabled) {
+        const { status: existing } = await Notifications.getPermissionsAsync();
+        let finalStatus = existing;
+        if (existing !== 'granted') {
+          const { status } = await Notifications.requestPermissionsAsync();
+          finalStatus = status;
+        }
+        if (finalStatus === 'granted') {
+          await saveOnboardingData({ notificationsEnabled: true });
+          setNotificationsEnabled(true);
+        } else {
+          await saveOnboardingData({ notificationsEnabled: false });
+          setNotificationsEnabled(false);
+          Alert.alert(
+            'Notifications',
+            'To receive reminders, enable notifications for this app in Settings.',
+            [
+              { text: 'Not now', style: 'cancel' },
+              { text: 'Open Settings', onPress: () => Linking.openSettings() },
+            ]
+          );
+        }
+      } else {
+        await saveOnboardingData({ notificationsEnabled: false });
+        await Notifications.cancelAllScheduledNotificationsAsync();
+        setNotificationsEnabled(false);
+      }
+    } catch (e) {
+      console.warn('Notification preference update failed', e);
+      Alert.alert('Error', 'Could not update notification settings.');
+    } finally {
+      setNotificationSwitchBusy(false);
+    }
+  };
+
   const menuItems = [
     { id: 'rate', title: 'Rate us', icon: Star },
     { id: 'signout', title: 'Sign out', icon: LogOut, isDestructive: true },
+    { id: 'delete_account', title: 'Delete account', icon: Trash2, isDestructive: true },
   ];
+
+  const resetNavigationToLogin = () => {
+    let rootNavigator = navigation;
+    let parent = navigation.getParent();
+    while (parent) {
+      rootNavigator = parent;
+      parent = parent.getParent();
+    }
+    rootNavigator.dispatch(
+      CommonActions.reset({
+        index: 0,
+        routes: [{ name: 'Login' }],
+      })
+    );
+  };
 
   const handleSignOut = async () => {
     try {
-      // Sign out from Supabase
       const { error } = await supabase.auth.signOut();
-      
+
       if (error) {
         throw error;
       }
-      
-      // Navigate to Login screen by getting the root navigator
-      // Since ProfileScreen is nested (inside BottomTabNavigator inside Stack),
-      // we need to get the root Stack navigator
-      let rootNavigator = navigation;
-      
-      // Traverse up to find the root navigator (Stack navigator)
-      // The navigation hierarchy is: ProfileScreen -> BottomTabNavigator -> Stack
-      let parent = navigation.getParent();
-      while (parent) {
-        rootNavigator = parent;
-        parent = parent.getParent();
-      }
-      
-      // Reset navigation stack to Login screen using root navigator
-      rootNavigator.dispatch(
-        CommonActions.reset({
-          index: 0,
-          routes: [{ name: 'Login' }],
-        })
-      );
+
+      resetNavigationToLogin();
     } catch (error) {
       console.error('Error signing out:', error);
       Alert.alert('Error', 'Failed to sign out. Please try again.');
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (deletingAccount) return;
+    setDeletingAccount(true);
+    try {
+      const { error } = await deleteCurrentUserAccount();
+      if (error) {
+        throw error;
+      }
+      const { error: signOutError } = await supabase.auth.signOut();
+      if (signOutError) {
+        console.warn('Sign out after delete failed', signOutError.message);
+      }
+      resetNavigationToLogin();
+    } catch (error) {
+      console.error('Error deleting account:', error);
+      const message =
+        error?.message && typeof error.message === 'string'
+          ? error.message
+          : 'Could not delete your account. Please try again.';
+      Alert.alert('Error', message);
+    } finally {
+      setDeletingAccount(false);
     }
   };
 
@@ -61,6 +154,15 @@ export default function ProfileScreen() {
       // Handle native rating modal
       const handleRate = async () => {
         try {
+          // Lazy load the module to prevent startup crash if native module is missing
+          const StoreReview = require('expo-store-review');
+          
+          if (!StoreReview) {
+            console.error('StoreReview module is not loaded');
+            Alert.alert('Error', 'Rating feature is not available in this build.');
+            return;
+          }
+
           const isAvailable = await StoreReview.isAvailableAsync();
           if (isAvailable) {
             await StoreReview.requestReview();
@@ -70,11 +172,14 @@ export default function ProfileScreen() {
           }
         } catch (error) {
           console.error('Error with rating:', error);
+          // If the error is about missing native module, we catch it here
+          if (error.message && error.message.includes('native module')) {
+            Alert.alert('Error', 'This build is missing the rating module. Please rebuild the app.');
+          }
         }
       };
       handleRate();
     } else if (id === 'signout') {
-      // Show confirmation alert before signing out
       Alert.alert(
         'Sign Out',
         'Are you sure you want to sign out?',
@@ -90,8 +195,20 @@ export default function ProfileScreen() {
           },
         ]
       );
+    } else if (id === 'delete_account') {
+      Alert.alert(
+        'Delete account',
+        'This permanently deletes your account and data. This cannot be undone.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: handleDeleteAccount,
+          },
+        ]
+      );
     }
-    // TODO: Implement navigation/actions for other menu items
   };
 
   return (
@@ -99,9 +216,30 @@ export default function ProfileScreen() {
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
           <Text style={styles.title}>profile</Text>
+          {deletingAccount ? (
+            <ActivityIndicator style={styles.headerSpinner} color="#FF4D4F" />
+          ) : null}
         </View>
         
         <View style={styles.menuContainer}>
+          <View style={[styles.menuItem, styles.menuItemFirst, styles.toggleRow]}>
+            <View style={styles.menuItemLeft}>
+              <Bell size={24} color="#333" />
+              <View style={styles.toggleLabels}>
+                <Text style={styles.menuItemText}>notifications</Text>
+                <Text style={styles.toggleHint}>
+                  Turn off to stop reminder alerts. System permission stays in Settings.
+                </Text>
+              </View>
+            </View>
+            <Switch
+              value={notificationsEnabled}
+              onValueChange={handleNotificationToggle}
+              disabled={notificationSwitchBusy || deletingAccount}
+              trackColor={{ false: '#E0E0E0', true: 'rgba(1, 196, 89, 0.45)' }}
+              thumbColor={notificationsEnabled ? '#01C459' : '#f4f3f4'}
+            />
+          </View>
           {menuItems.map((item, index) => {
             const IconComponent = item.icon;
             return (
@@ -109,11 +247,11 @@ export default function ProfileScreen() {
                 key={item.id}
                 style={[
                   styles.menuItem,
-                  index === 0 && styles.menuItemFirst,
                   index === menuItems.length - 1 && styles.menuItemLast,
                 ]}
                 onPress={() => handleMenuItemPress(item.id)}
                 activeOpacity={0.7}
+                disabled={deletingAccount}
               >
                 <View style={styles.menuItemLeft}>
                   <IconComponent 
@@ -156,6 +294,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
+  headerSpinner: {
+    marginLeft: 'auto',
+  },
   headerLogo: {
     width: 32,
     height: 32,
@@ -184,6 +325,23 @@ const styles = StyleSheet.create({
   menuItemFirst: {
     borderTopLeftRadius: 12,
     borderTopRightRadius: 12,
+  },
+  toggleRow: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  toggleLabels: {
+    flex: 1,
+    marginLeft: 16,
+    marginRight: 8,
+  },
+  toggleHint: {
+    fontSize: 12,
+    color: '#888',
+    fontFamily: FONTS.anton,
+    marginTop: 4,
+    textTransform: 'lowercase',
+    lineHeight: 16,
   },
   menuItemLast: {
     borderBottomLeftRadius: 12,

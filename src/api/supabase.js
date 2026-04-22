@@ -15,8 +15,10 @@ if (missing) {
       'Missing Supabase env. Set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY in .env. Using placeholders; API calls will fail.'
     );
   } else {
-    throw new Error(
-      'Missing EXPO_PUBLIC_SUPABASE_URL or EXPO_PUBLIC_SUPABASE_ANON_KEY. Set them in .env before running the app.'
+    // In production, we log the error instead of throwing to prevent a splash screen hang.
+    // The app will boot to the login screen, where API calls will fail with a manageable error.
+    console.error(
+      'Error: Missing EXPO_PUBLIC_SUPABASE_URL or EXPO_PUBLIC_SUPABASE_ANON_KEY. Ensure environment variables are set correctly in the build.'
     );
   }
 }

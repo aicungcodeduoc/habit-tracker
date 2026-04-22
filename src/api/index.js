@@ -9,3 +9,5 @@ export * from './onboardingService';
 export * from './geminiService';
 export * from './buddyService';
 export * from './buddyActions';
+export * from './accountService';
+export * from './appleAuth';

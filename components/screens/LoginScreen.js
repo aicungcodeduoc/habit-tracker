@@ -8,19 +8,23 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  Platform,
 } from 'react-native';
+import * as AppleAuthentication from 'expo-apple-authentication';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FONTS } from '../../config/fonts';
 import { supabase } from '../../config/supabase';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import { syncOnboardingToDatabase } from '../../src/api/onboardingService';
+import { signInWithApple } from '../../src/api/appleAuth';
 
 // Complete the OAuth flow
 WebBrowser.maybeCompleteAuthSession();
 
 export default function LoginScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
+  const [appleLoading, setAppleLoading] = useState(false);
 
   useEffect(() => {
     // Handle deep links when app is opened from OAuth redirect
@@ -148,6 +152,25 @@ export default function LoginScreen({ navigation }) {
     }
   };
 
+  const handleAppleSignIn = async () => {
+    if (loading || appleLoading) return;
+    setAppleLoading(true);
+    try {
+      const { session, error, cancelled } = await signInWithApple(supabase);
+      if (cancelled) return;
+      if (error) {
+        Alert.alert('Error', error.message || 'Sign in with Apple failed.');
+        return;
+      }
+      if (session) {
+        await syncOnboardingToDatabase();
+        navigation.replace('Main');
+      }
+    } finally {
+      setAppleLoading(false);
+    }
+  };
+
   return (
     <ImageBackground
       source={require('../../assets/login/login.png')}
@@ -174,14 +197,31 @@ export default function LoginScreen({ navigation }) {
             style={styles.getStartedButton}
             onPress={handleGetStarted}
             activeOpacity={0.8}
+            disabled={loading || appleLoading}
           >
             <Text style={styles.getStartedText}>get started</Text>
           </TouchableOpacity>
 
+          {Platform.OS === 'ios' ? (
+            <View style={styles.appleButtonWrap}>
+              {appleLoading ? (
+                <ActivityIndicator color="#FFFFFF" style={styles.appleLoading} />
+              ) : (
+                <AppleAuthentication.AppleAuthenticationButton
+                  buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+                  buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE}
+                  cornerRadius={50}
+                  style={styles.appleButton}
+                  onPress={handleAppleSignIn}
+                />
+              )}
+            </View>
+          ) : null}
+
           <TouchableOpacity
             style={styles.continueButton}
             onPress={handleGoogleSignIn}
-            disabled={loading}
+            disabled={loading || appleLoading}
             activeOpacity={0.8}
           >
             {loading ? (
@@ -232,6 +272,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 40,
     gap: 16,
+  },
+  appleButtonWrap: {
+    width: '100%',
+    minHeight: 56,
+    justifyContent: 'center',
+  },
+  appleButton: {
+    width: '100%',
+    height: 56,
+  },
+  appleLoading: {
+    paddingVertical: 16,
   },
   getStartedButton: {
     backgroundColor: '#FFFFFF',

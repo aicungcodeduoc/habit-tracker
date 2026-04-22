@@ -13,6 +13,7 @@ import {
   Animated,
   Alert,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { useNavigation } from '@react-navigation/native';
@@ -24,6 +25,8 @@ import { supabase } from '../../config/supabase';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import { saveOnboardingData, syncOnboardingToDatabase } from '../../src/api/onboardingService';
+import { signInWithApple } from '../../src/api/appleAuth';
+import * as AppleAuthentication from 'expo-apple-authentication';
 
 // Complete the OAuth flow
 WebBrowser.maybeCompleteAuthSession();
@@ -35,6 +38,7 @@ export default function OnboardingScreen() {
   const [isInputFocused, setIsInputFocused] = useState(false);
   const [selectedDistraction, setSelectedDistraction] = useState(null);
   const [isFromGoogleSignIn, setIsFromGoogleSignIn] = useState(false);
+  const [appleSigning, setAppleSigning] = useState(false);
   
   // Get screen dimensions
   const screenWidth = Dimensions.get('window').width;
@@ -378,34 +382,34 @@ export default function OnboardingScreen() {
     }
   };
 
+  const handleSkipNotifications = async () => {
+    await saveOnboardingData({ notificationsEnabled: false });
+    handleNext();
+  };
+
   const handleRequestNotification = async () => {
     try {
       const { status: existingStatus } = await Notifications.getPermissionsAsync();
       let finalStatus = existingStatus;
-      
+
       if (existingStatus !== 'granted') {
         const { status } = await Notifications.requestPermissionsAsync();
         finalStatus = status;
       }
-      
+
       if (finalStatus === 'granted') {
-        // Save notification permission status
         await saveOnboardingData({
           notificationsEnabled: true,
         });
-        
-        // Permission granted, proceed to next step
         handleNext();
       } else {
-        Alert.alert(
-          'Permission Required',
-          'Please enable notifications to receive reminders about your habits.',
-          [{ text: 'OK' }]
-        );
+        await saveOnboardingData({ notificationsEnabled: false });
+        handleNext();
       }
     } catch (error) {
       console.error('Error requesting notification permission:', error);
-      Alert.alert('Error', 'Failed to request notification permission');
+      await saveOnboardingData({ notificationsEnabled: false });
+      handleNext();
     }
   };
 
@@ -487,6 +491,26 @@ export default function OnboardingScreen() {
     } catch (error) {
       console.error('Google sign in error:', error);
       Alert.alert('Error', error.message || 'Failed to sign in with Google. Please try again.');
+    }
+  };
+
+  const handleAppleSignIn = async () => {
+    if (appleSigning || Platform.OS !== 'ios') return;
+    setAppleSigning(true);
+    try {
+      const { session, error, cancelled } = await signInWithApple(supabase);
+      if (cancelled) return;
+      if (error) {
+        Alert.alert('Error', error.message || 'Sign in with Apple failed.');
+        return;
+      }
+      if (session) {
+        await syncOnboardingToDatabase();
+        setIsFromGoogleSignIn(true);
+        setCurrentStep(5);
+      }
+    } finally {
+      setAppleSigning(false);
     }
   };
 
@@ -797,6 +821,13 @@ export default function OnboardingScreen() {
             >
               <Text style={styles.allowButtonText}>yes, i allow</Text>
             </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.notNowButton}
+              onPress={handleSkipNotifications}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.notNowButtonText}>not now</Text>
+            </TouchableOpacity>
           </Animated.View>
         </View>
       );
@@ -836,18 +867,36 @@ export default function OnboardingScreen() {
               },
             ]}
           >
-            <TouchableOpacity
-              style={styles.googleButton}
-              onPress={handleGoogleSignIn}
-              activeOpacity={0.8}
-            >
-              <Image
-                source={require('../../assets/onboarding/login_with_google.png')}
-                style={styles.googleButtonImage}
-                resizeMode="contain"
-              />
-              <Text style={styles.googleButtonText}>continue with google</Text>
-            </TouchableOpacity>
+            <View style={styles.oauthButtonsColumn}>
+              {Platform.OS === 'ios' ? (
+                <View style={styles.onboardingAppleWrap}>
+                  {appleSigning ? (
+                    <ActivityIndicator color="#01C459" style={styles.onboardingAppleSpinner} />
+                  ) : (
+                    <AppleAuthentication.AppleAuthenticationButton
+                      buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+                      buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+                      cornerRadius={30}
+                      style={styles.onboardingAppleButton}
+                      onPress={handleAppleSignIn}
+                    />
+                  )}
+                </View>
+              ) : null}
+              <TouchableOpacity
+                style={styles.googleButton}
+                onPress={handleGoogleSignIn}
+                activeOpacity={0.8}
+                disabled={appleSigning}
+              >
+                <Image
+                  source={require('../../assets/onboarding/login_with_google.png')}
+                  style={styles.googleButtonImage}
+                  resizeMode="contain"
+                />
+                <Text style={styles.googleButtonText}>continue with google</Text>
+              </TouchableOpacity>
+            </View>
           </Animated.View>
         </View>
       );
@@ -1261,6 +1310,19 @@ const styles = StyleSheet.create({
     textTransform: 'lowercase',
     fontWeight: 'bold',
   },
+  notNowButton: {
+    marginTop: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+  },
+  notNowButtonText: {
+    fontSize: 16,
+    color: 'rgba(51, 51, 51, 0.75)',
+    fontFamily: FONTS.anton,
+    textTransform: 'lowercase',
+  },
   // Step 5 styles
   step5Container: {
     flex: 1,
@@ -1272,6 +1334,22 @@ const styles = StyleSheet.create({
     left: 20,
     right: 20,
     zIndex: 10,
+  },
+  oauthButtonsColumn: {
+    width: '100%',
+    gap: 12,
+  },
+  onboardingAppleWrap: {
+    width: '100%',
+    minHeight: 56,
+    justifyContent: 'center',
+  },
+  onboardingAppleButton: {
+    width: '100%',
+    height: 56,
+  },
+  onboardingAppleSpinner: {
+    paddingVertical: 16,
   },
   googleButton: {
     backgroundColor: '#FFFFFF',
