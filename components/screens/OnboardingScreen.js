@@ -26,7 +26,6 @@ import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import { saveOnboardingData, syncOnboardingToDatabase } from '../../src/api/onboardingService';
 import { signInWithApple } from '../../src/api/appleAuth';
-import * as AppleAuthentication from 'expo-apple-authentication';
 
 // Complete the OAuth flow
 WebBrowser.maybeCompleteAuthSession();
@@ -873,13 +872,15 @@ export default function OnboardingScreen() {
                   {appleSigning ? (
                     <ActivityIndicator color="#01C459" style={styles.onboardingAppleSpinner} />
                   ) : (
-                    <AppleAuthentication.AppleAuthenticationButton
-                      buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
-                      buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
-                      cornerRadius={30}
+                    <TouchableOpacity
                       style={styles.onboardingAppleButton}
                       onPress={handleAppleSignIn}
-                    />
+                      activeOpacity={0.85}
+                      accessibilityRole="button"
+                      accessibilityLabel="Sign in with Apple"
+                    >
+                      <Text style={styles.onboardingAppleButtonText}>sign in with apple</Text>
+                    </TouchableOpacity>
                   )}
                 </View>
               ) : null}
@@ -1347,6 +1348,17 @@ const styles = StyleSheet.create({
   onboardingAppleButton: {
     width: '100%',
     height: 56,
+    borderRadius: 30,
+    backgroundColor: '#000000',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  onboardingAppleButtonText: {
+    fontSize: 16,
+    color: '#FFFFFF',
+    fontFamily: FONTS.anton,
+    textTransform: 'lowercase',
+    fontWeight: 'bold',
   },
   onboardingAppleSpinner: {
     paddingVertical: 16,

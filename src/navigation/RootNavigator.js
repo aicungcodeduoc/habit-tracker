@@ -8,6 +8,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { BottomTabNavigator } from '../components';
 import {
   LoginScreen,
+  SignInScreen,
   SettingsScreen,
   OnboardingScreen,
   AddHabitScreen,
@@ -28,6 +29,7 @@ export default function RootNavigator({ initialRouteName = 'Login' }) {
       screenOptions={{ headerShown: false }}
     >
       <Stack.Screen name="Login" component={LoginScreen} />
+      <Stack.Screen name="SignIn" component={SignInScreen} />
       <Stack.Screen name="Onboarding" component={OnboardingScreen} />
       <Stack.Screen name="Main" component={BottomTabNavigator} />
       <Stack.Screen name="Settings" component={SettingsScreen} />

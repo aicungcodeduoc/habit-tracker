@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -6,169 +6,17 @@ import {
   ImageBackground,
   Image,
   TouchableOpacity,
-  ActivityIndicator,
-  Alert,
-  Platform,
 } from 'react-native';
-import * as AppleAuthentication from 'expo-apple-authentication';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FONTS } from '../../config/fonts';
-import { supabase } from '../../config/supabase';
-import * as WebBrowser from 'expo-web-browser';
-import * as Linking from 'expo-linking';
-import { syncOnboardingToDatabase } from '../../src/api/onboardingService';
-import { signInWithApple } from '../../src/api/appleAuth';
-
-// Complete the OAuth flow
-WebBrowser.maybeCompleteAuthSession();
 
 export default function LoginScreen({ navigation }) {
-  const [loading, setLoading] = useState(false);
-  const [appleLoading, setAppleLoading] = useState(false);
-
-  useEffect(() => {
-    // Handle deep links when app is opened from OAuth redirect
-    const handleDeepLink = async (event) => {
-      const url = event.url;
-      if (url && url.includes('access_token')) {
-        // Parse the URL to extract tokens from hash fragments
-        const hashParams = new URLSearchParams(url.split('#')[1] || '');
-        const accessToken = hashParams.get('access_token');
-        const refreshToken = hashParams.get('refresh_token');
-        
-        if (accessToken && refreshToken) {
-          // Set the session with the tokens
-          const { data: { session }, error } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken,
-          });
-          
-          if (session && !error) {
-            navigation.replace('Main');
-          }
-        }
-      }
-    };
-
-    // Get initial URL if app was opened from a link
-    Linking.getInitialURL().then((url) => {
-      if (url) {
-        handleDeepLink({ url });
-      }
-    });
-
-    // Listen for deep links while app is running
-    const subscription = Linking.addEventListener('url', handleDeepLink);
-
-    return () => {
-      subscription?.remove();
-    };
-  }, [navigation]);
-
   const handleGetStarted = () => {
-    // Navigate to onboarding process
     navigation.replace('Onboarding');
   };
 
-  const handleGoogleSignIn = async () => {
-    try {
-      setLoading(true);
-
-      // Get the redirect URL - this should match your Supabase redirect URL configuration
-      // Format: small:// (for production) or exp://localhost:8081 (for Expo Go)
-      const redirectUrl = Linking.createURL('/');
-      
-      // Sign in with Google
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: redirectUrl,
-        },
-      });
-
-      if (error) {
-        throw error;
-      }
-
-      // Open the OAuth URL in browser
-      if (data?.url) {
-        const result = await WebBrowser.openAuthSessionAsync(
-          data.url,
-          redirectUrl
-        );
-
-        if (result.type === 'success') {
-          // Parse the redirect URL to extract tokens
-          const url = result.url;
-          console.log('OAuth redirect URL:', url);
-          
-          // Extract hash fragments from URL (access_token, refresh_token, etc.)
-          const hashParams = new URLSearchParams(url.split('#')[1] || '');
-          const accessToken = hashParams.get('access_token');
-          const refreshToken = hashParams.get('refresh_token');
-          
-          if (accessToken && refreshToken) {
-            // Set the session manually with the tokens from the OAuth callback
-            const { data: { session }, error: sessionError } = await supabase.auth.setSession({
-              access_token: accessToken,
-              refresh_token: refreshToken,
-            });
-            
-            if (session && !sessionError) {
-              // Sync any local onboarding data to database after authentication
-              await syncOnboardingToDatabase();
-              
-              // Session is set, navigation will be handled by App.js auth state listener
-              // But we can navigate here as well to ensure it happens
-              navigation.replace('Main');
-            } else {
-              console.error('Session error:', sessionError);
-              Alert.alert('Error', sessionError?.message || 'Failed to complete sign in. Please try again.');
-              setLoading(false);
-            }
-          } else {
-            // Try to get session from Supabase (it might have processed it automatically)
-            setTimeout(async () => {
-              const { data: { session } } = await supabase.auth.getSession();
-              if (session) {
-                navigation.replace('Main');
-              } else {
-                Alert.alert('Error', 'Failed to complete sign in. Please try again.');
-                setLoading(false);
-              }
-            }, 1000);
-          }
-        } else if (result.type === 'cancel') {
-          // User cancelled the OAuth flow
-          setLoading(false);
-        } else {
-          setLoading(false);
-        }
-      }
-    } catch (error) {
-      console.error('Error signing in with Google:', error);
-      Alert.alert('Error', error.message || 'Failed to sign in with Google');
-      setLoading(false);
-    }
-  };
-
-  const handleAppleSignIn = async () => {
-    if (loading || appleLoading) return;
-    setAppleLoading(true);
-    try {
-      const { session, error, cancelled } = await signInWithApple(supabase);
-      if (cancelled) return;
-      if (error) {
-        Alert.alert('Error', error.message || 'Sign in with Apple failed.');
-        return;
-      }
-      if (session) {
-        await syncOnboardingToDatabase();
-        navigation.replace('Main');
-      }
-    } finally {
-      setAppleLoading(false);
-    }
+  const handleContinueWithAccount = () => {
+    navigation.navigate('SignIn');
   };
 
   return (
@@ -178,57 +26,35 @@ export default function LoginScreen({ navigation }) {
       resizeMode="cover"
     >
       <SafeAreaView style={styles.container}>
-        {/* Logo and Tagline Section */}
-        <View style={styles.logoSection}>
-          <Image
-            source={require('../../assets/logo/logo.png')}
-            style={styles.logo}
-            resizeMode="contain"
-          />
-          <View style={styles.taglineContainer}>
-            <Text style={styles.tagline}>just start</Text>
-            <Text style={styles.tagline}>done daily</Text>
+        <View style={styles.topArea}>
+          <View style={styles.logoSection}>
+            <Image
+              source={require('../../assets/logo/logo.png')}
+              style={styles.logo}
+              resizeMode="contain"
+            />
+            <View style={styles.taglineContainer}>
+              <Text style={styles.tagline}>just start</Text>
+              <Text style={styles.tagline}>done daily</Text>
+            </View>
           </View>
         </View>
 
-        {/* Buttons Section */}
         <View style={styles.buttonsContainer}>
           <TouchableOpacity
             style={styles.getStartedButton}
             onPress={handleGetStarted}
             activeOpacity={0.8}
-            disabled={loading || appleLoading}
           >
             <Text style={styles.getStartedText}>get started</Text>
           </TouchableOpacity>
 
-          {Platform.OS === 'ios' ? (
-            <View style={styles.appleButtonWrap}>
-              {appleLoading ? (
-                <ActivityIndicator color="#FFFFFF" style={styles.appleLoading} />
-              ) : (
-                <AppleAuthentication.AppleAuthenticationButton
-                  buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
-                  buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE}
-                  cornerRadius={50}
-                  style={styles.appleButton}
-                  onPress={handleAppleSignIn}
-                />
-              )}
-            </View>
-          ) : null}
-
           <TouchableOpacity
             style={styles.continueButton}
-            onPress={handleGoogleSignIn}
-            disabled={loading || appleLoading}
+            onPress={handleContinueWithAccount}
             activeOpacity={0.8}
           >
-            {loading ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
-              <Text style={styles.continueText}>continue with my account</Text>
-            )}
+            <Text style={styles.continueText}>continue with my account</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -244,13 +70,15 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    justifyContent: 'space-between',
+  },
+  topArea: {
+    flex: 1,
+    paddingTop: 24,
   },
   logoSection: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingTop: 60,
     alignSelf: 'center',
   },
   logo: {
@@ -272,18 +100,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 40,
     gap: 16,
-  },
-  appleButtonWrap: {
-    width: '100%',
-    minHeight: 56,
-    justifyContent: 'center',
-  },
-  appleButton: {
-    width: '100%',
-    height: 56,
-  },
-  appleLoading: {
-    paddingVertical: 16,
   },
   getStartedButton: {
     backgroundColor: '#FFFFFF',

@@ -33,7 +33,7 @@
 		</dict>
 	</array>
 	<key>CFBundleVersion</key>
-	<string>12</string>
+	<string>15</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>LSMinimumSystemVersion</key>
@@ -54,7 +54,7 @@
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>This app needs access to your photo library to select images for habit tracking.</string>
 	<key>RCTNewArchEnabled</key>
-	<true/>
+	<false/>
 	<key>UILaunchStoryboardName</key>
 	<string>SplashScreen</string>
 	<key>UIRequiredDeviceCapabilities</key>

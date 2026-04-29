@@ -225,12 +225,7 @@ export default function ProfileScreen() {
           <View style={[styles.menuItem, styles.menuItemFirst, styles.toggleRow]}>
             <View style={styles.menuItemLeft}>
               <Bell size={24} color="#333" />
-              <View style={styles.toggleLabels}>
-                <Text style={styles.menuItemText}>notifications</Text>
-                <Text style={styles.toggleHint}>
-                  Turn off to stop reminder alerts. System permission stays in Settings.
-                </Text>
-              </View>
+              <Text style={styles.menuItemText}>notifications</Text>
             </View>
             <Switch
               value={notificationsEnabled}
@@ -329,19 +324,6 @@ const styles = StyleSheet.create({
   toggleRow: {
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
-  },
-  toggleLabels: {
-    flex: 1,
-    marginLeft: 16,
-    marginRight: 8,
-  },
-  toggleHint: {
-    fontSize: 12,
-    color: '#888',
-    fontFamily: FONTS.anton,
-    marginTop: 4,
-    textTransform: 'lowercase',
-    lineHeight: 16,
   },
   menuItemLast: {
     borderBottomLeftRadius: 12,
